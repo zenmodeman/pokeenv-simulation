@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from poke_engine import Move, Pokemon, Side, State, SideConditions, generate_instructions
 
-from foul_play_player import FoulPlayPlayer, KnownSetMatch, Turn, battle_to_poke_engine_state, healing_protect
+from foul_play_player import (FoulPlayPlayer, KnownSetMatch, Turn, battle_to_poke_engine_state,
+                              healing_protect, select_search_move)
 
 
 TEAMS = [
@@ -49,6 +50,7 @@ class HealingProtectTests(unittest.TestCase):
 
     def result(self, response="tackle", visits=90, score=0.8):
         return SimpleNamespace(
+            total_visits=visits + 100,
             side_one=[SimpleNamespace(move_choice="protect", visits=visits, total_score=visits * score),
                       SimpleNamespace(move_choice="payback", visits=100, total_score=80)],
             side_two=[SimpleNamespace(move_choice=response)])
@@ -70,6 +72,38 @@ class HealingProtectTests(unittest.TestCase):
     def test_preserves_search_preference_when_protect_is_worse(self):
         self.assertFalse(healing_protect(self.state(), self.result(visits=74)))
         self.assertFalse(healing_protect(self.state(), self.result(score=0.7)))
+
+    def test_consecutive_protect_gate_precedes_context_and_policy(self):
+        for streak in (1, 2, 3):
+            threshold = 1.0 - 3.0 ** -streak
+            for roll, blocked in ((threshold - 0.00001, True), (threshold, False)):
+                with self.subTest(streak=streak, roll=roll), \
+                     patch("foul_play_player.random.random", return_value=roll), \
+                     patch("foul_play_player.healing_protect", side_effect=lambda s, r:
+                           any(o.move_choice == "protect" for o in r.side_one)), \
+                     patch("foul_play_player.select_move_from_mcts_results",
+                           side_effect=lambda results: max(results[0][0].side_one,
+                                                          key=lambda o: o.visits).move_choice):
+                    self.assertEqual(select_search_move(self.state(protect=streak), self.result()),
+                                     "payback" if blocked else "protect")
+
+    def test_first_protect_does_not_roll_gate(self):
+        with patch("foul_play_player.random.random") as rng:
+            self.assertEqual(select_search_move(self.state(), self.result()), "protect")
+        rng.assert_not_called()
+
+    def test_blocked_protect_can_use_unvisited_alternative(self):
+        result = self.result()
+        result.side_one[1].visits = 0
+        with patch("foul_play_player.random.random", return_value=0):
+            self.assertEqual(select_search_move(self.state(protect=1), result), "payback")
+
+    def test_blocked_protect_without_alternative_fails_explicitly(self):
+        result = self.result()
+        result.side_one = result.side_one[:1]
+        with patch("foul_play_player.random.random", return_value=0):
+            with self.assertRaisesRegex(RuntimeError, "no alternative"):
+                select_search_move(self.state(protect=1), result)
 
 
 class StateBridgeTests(unittest.TestCase):

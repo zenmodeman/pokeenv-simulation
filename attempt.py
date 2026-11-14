@@ -84,9 +84,22 @@ def load_config(path):
 def install_local_formats():
     source = ROOT / "mechanics" / "custom-formats.ts"
     target = ROOT / "pokemon-showdown" / "config" / "custom-formats.ts"
-    if target.exists() and target.read_text() != source.read_text():
-        raise ValueError(f"{target} already contains custom formats; merge {source} into it manually")
-    target.write_text(source.read_text())
+    contents = source.read_text(encoding="utf-8")
+    if target.exists():
+        installed = target.read_text(encoding="utf-8")
+        if installed == contents:
+            return
+        if not installed.startswith("// Installed by attempt.py before starting the local Showdown server.\n"):
+            raise ValueError(f"{target} already contains custom formats; merge {source} into it manually")
+        # Preserve edits to an older generated copy before refreshing it.
+        backup = target.with_name(target.name + ".bak")
+        index = 1
+        while backup.exists():
+            backup = target.with_name(f"{target.name}.bak.{index}")
+            index += 1
+        backup.write_text(installed, encoding="utf-8")
+        LOGGER.info("Saved previous local formats to %s", backup)
+    target.write_text(contents, encoding="utf-8")
 
 
 async def simulate(config, output, accuracy_changes=True):

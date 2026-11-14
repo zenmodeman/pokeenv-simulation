@@ -129,10 +129,11 @@ python -m pip install --force-reinstall --no-deps ./vendor/poke-engine/poke-engi
 ```
 
 Before launching a new server, the runner installs `mechanics/custom-formats.ts`
-into Showdown's `config/custom-formats.ts`. It refuses to overwrite a different
-custom formats file; merge the formats and start Showdown manually if you already
-have one. To replace an older copy installed by this project, run
-`cp mechanics/custom-formats.ts pokemon-showdown/config/custom-formats.ts`.
+into Showdown's `config/custom-formats.ts`. Older copies bearing this project's
+installation comment are refreshed automatically, with the previous contents
+saved to `custom-formats.ts.bak` (or a numbered backup if one already exists).
+It refuses to overwrite unrelated custom formats files; merge the formats and
+start Showdown manually if you already have one.
 For an existing server, install that file and restart the server first (the normal
 server startup builds it). Simulations use `gen9localsimulation` or, with the flag, `gen9accuracychanges`.
 Both formats disable Tera, so an unprepared server cannot silently run with

@@ -3,10 +3,12 @@ import asyncio
 import inspect
 import json
 import logging
+import random
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 import sys
+from types import SimpleNamespace
 
 from poke_env.player import Player
 
@@ -53,6 +55,25 @@ class KnownSetsMode:
 
     def check_zoroark_from_immune(self, *args):
         pass
+
+
+def select_search_move(state, result):
+    """Gate repeated Protect before applying any contextual move preferences."""
+    streak = state.side_one.side_conditions.protect
+    if streak > 0 and any(
+        option.move_choice.removesuffix("-mega") == "protect" for option in result.side_one
+    ) and random.random() < 1.0 - 3.0 ** -streak:
+        options = [option for option in result.side_one
+                   if option.move_choice.removesuffix("-mega") != "protect"]
+        if not options:
+            raise RuntimeError("Consecutive Protect was ignored but no alternative move is available")
+        result = SimpleNamespace(side_one=options, side_two=result.side_two,
+                                 total_visits=result.total_visits)
+        if not any(option.visits > 0 for option in options):
+            return random.choice(options).move_choice
+    if healing_protect(state, result):
+        return "protect"
+    return select_move_from_mcts_results([(result, 1.0, 0)])
 
 
 def healing_protect(state, result):
@@ -215,9 +236,7 @@ class KnownSetMatch:
         result = monte_carlo_tree_search(state, self.search_time_ms, threads=1)
         if result.total_visits <= 0 or not result.side_one:
             raise RuntimeError("Foul Play search returned no policy; increase search_time_ms")
-        if healing_protect(state, result):
-            return "protect"
-        return select_move_from_mcts_results([(result, 1.0, 0)])
+        return select_search_move(state, result)
 
 
 class FoulPlayPlayer(Player):
@@ -233,10 +252,13 @@ class FoulPlayPlayer(Player):
         tag = split_messages[0][0].lstrip(">")
         pending = self.pending_messages.setdefault(tag, [])
         for message in split_messages[1:]:
-            if self.side_index == 0 and len(message) > 1 and message[1] in {
-                "turn", "move", "-damage", "-heal", "-crit", "faint", "win", "tie", "cant", "-status",
-                "-mega", "detailschange",
-            }:
+            action = message[1] if len(message) > 1 else ""
+            # Showdown prefixes minor battle events with '-': item consumption,
+            # ability activations, boosts, weather, misses, and other effects.
+            if self.side_index == 0 and (action.startswith("-") or action in {
+                "start", "turn", "upkeep", "move", "switch", "drag", "swap",
+                "replace", "detailschange", "faint", "win", "tie", "cant", "error",
+            }):
                 logging.getLogger("simulation").info("%s %s", tag, "|".join(message))
             if len(message) > 2 and message[1] == "request" and message[2]:
                 self.requests[tag] = json.loads(message[2])
