@@ -49,7 +49,22 @@ def load_config(path):
     return config
 
 
-async def simulate(config, output):
+def install_local_formats():
+    source = ROOT / "mechanics" / "custom-formats.ts"
+    target = ROOT / "pokemon-showdown" / "config" / "custom-formats.ts"
+    if target.exists() and target.read_text() != source.read_text():
+        raise ValueError(f"{target} already contains custom formats; merge {source} into it manually")
+    target.write_text(source.read_text())
+
+
+async def simulate(config, output, accuracy_changes=False):
+    import poke_engine
+    configure = getattr(poke_engine, "set_accuracy_changes", None)
+    if configure is None and accuracy_changes:
+        raise RuntimeError("Rebuild the local poke-engine to use --accuracy-changes (see README.md)")
+    if configure is not None:
+        configure(accuracy_changes)
+    battle_format = "gen9accuracychanges" if accuracy_changes else "gen9customgame"
     rows = []
     for left, right in itertools.combinations(config["sets"], 2):
         players = []
@@ -58,7 +73,7 @@ async def simulate(config, output):
             for index, entry in enumerate((left, right)):
                 players.append(FoulPlayPlayer(
                     match=match, side_index=index,
-                    battle_format="gen9customgame", team=entry["team"],
+                    battle_format=battle_format, team=entry["team"],
                     max_concurrent_battles=1,
                 ))
             a, b = players
@@ -93,7 +108,7 @@ async def simulate(config, output):
                 error_task.cancel()
                 await asyncio.gather(play_task, error_task, return_exceptions=True)
             total = a.n_finished_battles
-            row = dict(policy="foul-play-mcts", search_time_ms=config["search_time_ms"], set_a=left["name"], set_b=right["name"], battles=total,
+            row = dict(mechanics="accuracy-changes" if accuracy_changes else "standard", policy="foul-play-mcts", search_time_ms=config["search_time_ms"], set_a=left["name"], set_b=right["name"], battles=total,
                        a_wins=a.n_won_battles, b_wins=b.n_won_battles,
                        ties=total - a.n_won_battles - b.n_won_battles,
                        a_win_rate=a.n_won_battles / total)
@@ -126,6 +141,8 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "results.csv")
     parser.add_argument("--start-server", action="store_true",
                         help="Start the bundled Showdown server if port 8000 is unused")
+    parser.add_argument("--accuracy-changes", action="store_true",
+                        help="Use 100%% base accuracy for Sky Attack and High Horsepower on both sides")
     args = parser.parse_args()
     server = None
     try:
@@ -133,6 +150,8 @@ def main():
         if not server_available():
             if not args.start_server:
                 parser.error("Start Showdown on localhost:8000 or pass --start-server")
+            if args.accuracy_changes:
+                install_local_formats()
             with (ROOT / "showdown.log").open("w") as log:
                 server = subprocess.Popen(
                     ["node", "pokemon-showdown", "start", "--no-security"],
@@ -143,7 +162,7 @@ def main():
                 if server.poll() is not None or time.monotonic() > deadline:
                     raise RuntimeError("Showdown failed to start; see showdown.log")
                 time.sleep(0.2)
-        asyncio.run(simulate(config, args.output))
+        asyncio.run(simulate(config, args.output, args.accuracy_changes))
     except (ValueError, OSError, RuntimeError, asyncio.TimeoutError) as error:
         parser.exit(1, f"Simulation failed: {error or 'pairing timed out; check sets and showdown.log'}\n")
     finally:

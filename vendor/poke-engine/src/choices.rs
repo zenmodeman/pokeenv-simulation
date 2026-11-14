@@ -7,6 +7,18 @@ use crate::state::{
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+// Process-wide rules profile; configure before starting any searches.
+static ACCURACY_CHANGES: AtomicBool = AtomicBool::new(false);
+
+pub fn set_accuracy_changes(enabled: bool) {
+    ACCURACY_CHANGES.store(enabled, Ordering::Relaxed);
+}
+
+pub fn accuracy_changes_enabled() -> bool {
+    ACCURACY_CHANGES.load(Ordering::Relaxed)
+}
 
 pub static MOVES: LazyLock<HashMap<Choices, Choice>> = LazyLock::new(|| {
     let mut moves: HashMap<Choices, Choice> = HashMap::new();

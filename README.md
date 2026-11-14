@@ -83,6 +83,37 @@ are overwritten for each run and saved after every completed pairing, so a later
 timeout preserves earlier pairings. Invalid sets may cause Showdown to reject a
 challenge; check console errors and the server log if a pairing times out.
 
+## Optional mechanics changes
+
+Enable the alternative rules for every Pokémon on both sides:
+
+```bash
+python attempt.py --start-server --accuracy-changes
+```
+
+Sky Attack, High Horsepower, Sand Tomb, Play Rough, Ruination, Drill Run, and
+Whirlpool then have **100% base accuracy** in both
+Showdown battles and engine searches. Accuracy/evasion stages and other accuracy
+modifiers still apply. Sky Attack retains its charge turn, Power Herb interaction,
+critical-hit rate, and other effects. Without the flag, standard mechanics apply.
+The CSV `mechanics` column records `standard` or `accuracy-changes`.
+
+Rebuild the local engine after pulling this change:
+
+```bash
+python -m pip install --force-reinstall --no-deps ./vendor/poke-engine/poke-engine-py --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
+```
+
+With the flag, before launching a new server, the runner installs `mechanics/custom-formats.ts`
+into Showdown's `config/custom-formats.ts`. It refuses to overwrite a different
+custom formats file; merge the format and start Showdown manually if you already
+have one.
+For an existing server, install that file and restart the server first (the normal
+server startup builds it). The flag uses `gen9accuracychanges`, a separate format,
+so an unprepared server cannot silently run standard battles instead.
+The search engine's rules toggle is process-wide; configure it before searches,
+and do not mix profiles in concurrent searches within the same Python process.
+
 ## Battle decisions
 
 Both sides now use [Foul Play](https://github.com/pmariglia/foul-play)'s

@@ -39,6 +39,20 @@ pub fn modify_choice(
     defender_choice: &Choice,
     attacking_side_ref: &SideReference,
 ) {
+    if crate::choices::accuracy_changes_enabled()
+        && matches!(
+            attacker_choice.move_id,
+            Choices::SKYATTACK
+                | Choices::HIGHHORSEPOWER
+                | Choices::SANDTOMB
+                | Choices::PLAYROUGH
+                | Choices::RUINATION
+                | Choices::DRILLRUN
+                | Choices::WHIRLPOOL
+        )
+    {
+        attacker_choice.accuracy = 100.0;
+    }
     let (attacking_side, defending_side) = state.get_both_sides_immutable(attacking_side_ref);
     match attacker_choice.move_id {
         Choices::ROOST => {

@@ -1123,9 +1123,15 @@ fn calculate_damage(
     Ok((s1_py_rolls, s2_py_rolls))
 }
 
+#[pyfunction]
+fn set_accuracy_changes(enabled: bool) {
+    poke_engine::choices::set_accuracy_changes(enabled);
+}
+
 #[pymodule]
 #[pyo3(name = "poke_engine")]
 fn py_poke_engine(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(set_accuracy_changes, m)?)?;
     m.add_function(wrap_pyfunction!(calculate_damage, m)?)?;
     m.add_function(wrap_pyfunction!(generate_instructions, m)?)?;
     m.add_function(wrap_pyfunction!(id, m)?)?;

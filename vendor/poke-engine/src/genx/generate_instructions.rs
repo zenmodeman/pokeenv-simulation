@@ -2343,8 +2343,15 @@ pub fn generate_instructions_from_move(
         final_instructions.push(incoming_instructions);
         return;
     }
-    choice_special_effect(state, choice, &attacking_side, &mut incoming_instructions);
-    let damage = calculate_damage(state, &attacking_side, &choice, DamageRolls::Max);
+    // Ruination's fixed damage must only be applied to the hit branch.
+    if choice.move_id != Choices::RUINATION {
+        choice_special_effect(state, choice, &attacking_side, &mut incoming_instructions);
+    }
+    let damage = if choice.move_id == Choices::RUINATION {
+        None // Fixed damage is handled below, after the accuracy check.
+    } else {
+        calculate_damage(state, &attacking_side, &choice, DamageRolls::Max)
+    };
     check_move_hit_or_miss(
         state,
         &choice,
@@ -2357,6 +2364,10 @@ pub fn generate_instructions_from_move(
     if incoming_instructions.percentage == 0.0 {
         state.reverse_instructions(&incoming_instructions.instruction_list);
         return;
+    }
+
+    if choice.move_id == Choices::RUINATION {
+        choice_special_effect(state, choice, &attacking_side, &mut incoming_instructions);
     }
 
     // start multi-hit

@@ -3,47 +3,6 @@ battles_per_pair = 20
 search_time_ms = 100
 timeout_seconds = 300
 
-[[sets]]
-name = "Garchomp - Scarf"
-team = '''
-Garchomp @ Choice Scarf
-Ability: Rough Skin
-Level: 100
-EVs: 252 Atk / 4 SpD / 252 Spe
-Jolly Nature
-- Earthquake
-- Outrage
-- Stone Edge
-- Iron Head
-'''
-
-[[sets]]
-name = "Dragonite - Band"
-team = '''
-Dragonite @ Choice Band
-Ability: Multiscale
-Level: 100
-EVs: 252 Atk / 4 SpD / 252 Spe
-Adamant Nature
-- Outrage
-- Extreme Speed
-- Earthquake
-- Fire Punch
-'''
-
-[[sets]]
-name = "Iron Valiant - Sash"
-team = '''
-Iron Valiant @ Focus Sash
-Ability: Quark Drive
-Level: 100
-EVs: 4 Def / 252 SpA / 252 Spe
-Timid Nature
-- Moonblast
-- Close Combat
-- Thunderbolt
-- Shadow Ball
-'''
 
 [[sets]]
 name = "Unfezant - Power Herb"
@@ -71,4 +30,68 @@ IVs: 0 Atk
 - Surf  
 - Ice Beam
 
+[[sets]]
+name = "Ting Lu - Protect"
+team = '''
+Ting-Lu @ Leftovers  
+Ability: Vessel of Ruin  
+EVs: 180 HP / 136 Def / 192 SpD  
+Impish Nature  
+- Payback  
+- Sand Tomb  
+- Stone Edge  
+- Protect
+
+[[sets]]
+name = "Dondozo - Noble Roar"
+team = '''
+Dondozo @ Leftovers  
+Ability: Unaware  
+EVs: 200 HP / 56 Def / 252 SpD  
+Bold Nature  
+IVs: 0 Atk  
+- Rest  
+- Sleep Talk  
+- Whirlpool  
+- Noble Roar
+'''
+
+[[sets]]
+name = "Skarmory - Mega"
+team = '''
+Skarmory @ Skarmorite  
+Ability: Sturdy  
+EVs: 208 HP / 48 Atk / 252 Spe  
+Jolly Nature  
+- Iron Head  
+- Brave Bird  
+- Drill Run  
+- Roost
+'''
+
+[[sets]]
+name = "Electivire - Expert Belt"
+team = '''
+Electivire @ Expert Belt  
+Ability: Motor Drive  
+EVs: 4 HP / 252 Atk / 252 Spe  
+Adamant Nature  
+- Supercell Slam  
+- Earthquake  
+- Low Kick  
+- Ice Punch
+'''
+
+[[sets]]
+name = "Wo-Chien Leech Seed"
+team = '''
+Wo-Chien @ Leftovers  
+Ability: Tablets of Ruin  
+EVs: 252 HP / 200 Def / 56 SpD  
+Calm Nature  
+IVs: 0 Atk  
+- Leech Seed  
+- Giga Drain  
+- Foul Play  
+- Protect
 '''
