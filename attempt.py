@@ -57,14 +57,14 @@ def install_local_formats():
     target.write_text(source.read_text())
 
 
-async def simulate(config, output, accuracy_changes=False):
+async def simulate(config, output, accuracy_changes=True):
     import poke_engine
     configure = getattr(poke_engine, "set_accuracy_changes", None)
     if configure is None and accuracy_changes:
         raise RuntimeError("Rebuild the local poke-engine to use --accuracy-changes (see README.md)")
     if configure is not None:
         configure(accuracy_changes)
-    battle_format = "gen9accuracychanges" if accuracy_changes else "gen9customgame"
+    battle_format = "gen9accuracychanges" if accuracy_changes else "gen9localsimulation"
     rows = []
     for left, right in itertools.combinations(config["sets"], 2):
         players = []
@@ -150,8 +150,7 @@ def main():
         if not server_available():
             if not args.start_server:
                 parser.error("Start Showdown on localhost:8000 or pass --start-server")
-            if args.accuracy_changes:
-                install_local_formats()
+            install_local_formats()
             with (ROOT / "showdown.log").open("w") as log:
                 server = subprocess.Popen(
                     ["node", "pokemon-showdown", "start", "--no-security"],

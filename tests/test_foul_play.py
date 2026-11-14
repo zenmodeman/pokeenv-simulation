@@ -1,11 +1,11 @@
 import asyncio
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from poke_engine import generate_instructions
 
-from foul_play_player import KnownSetMatch, Turn, battle_to_poke_engine_state
+from foul_play_player import FoulPlayPlayer, KnownSetMatch, Turn, battle_to_poke_engine_state
 
 
 TEAMS = [
@@ -96,7 +96,7 @@ class StateBridgeTests(unittest.TestCase):
 
     def test_search_returns_a_legal_action(self):
         result = self.match.search(self.first.snapshots[0])
-        self.assertIn(result.removesuffix("-tera"), {"closecombat", "moonblast"})
+        self.assertIn(result, {"closecombat", "moonblast"})
 
     def test_accuracy_and_evasion_stages_reach_engine(self):
         snapshot = self.first.snapshots[0]
@@ -109,6 +109,55 @@ class StateBridgeTests(unittest.TestCase):
         self.assertEqual(state.side_one.accuracy_boost, -2)
         self.assertEqual(state.side_two.evasion_boost, 1)
 
+    def test_search_disables_tera_for_both_sides_without_changing_active(self):
+        with patch("foul_play_player.monte_carlo_tree_search", side_effect=RuntimeError("capture")) as search:
+            with self.assertRaisesRegex(RuntimeError, "capture"):
+                self.match.search(self.first.snapshots[0])
+        state = search.call_args.args[0]
+        from poke_engine import monte_carlo_tree_search
+        result = monte_carlo_tree_search(state, 20, threads=1)
+        for options in (result.side_one, result.side_two):
+            self.assertFalse(any(option.move_choice.endswith("-tera") for option in options))
+        self.assertFalse(state.side_one.pokemon[0].terastallized)
+        self.assertFalse(state.side_two.pokemon[0].terastallized)
+
+    def test_mega_choices_change_form_stats_ability_and_persist(self):
+        teams = ["Charizard @ Charizardite X\nAbility: Blaze\nJolly Nature\n- Dragon Claw", TEAMS[1]]
+        match = KnownSetMatch(teams, 50)
+        reqs = requests()
+        reqs[0] = request("p1", "Charizard", ["dragonclaw"], "blaze", "charizarditex",
+                          {"atk": 204, "def": 192, "spa": 228, "spd": 206, "spe": 259}, 297)
+        reqs[0]["active"][0]["canMegaEvo"] = True
+        turn = Turn(requests=reqs)
+        match.prepare("mega", turn)
+        with patch("foul_play_player.monte_carlo_tree_search", side_effect=RuntimeError("capture")) as search:
+            with self.assertRaisesRegex(RuntimeError, "capture"):
+                match.search(turn.snapshots[0])
+        state = search.call_args.args[0]
+        from poke_engine import monte_carlo_tree_search
+        result = monte_carlo_tree_search(state, 20, threads=1)
+        self.assertIn("dragonclaw-mega", {o.move_choice for o in result.side_one})
+        branches = generate_instructions(state, "dragonclaw-mega", "earthquake")
+        evolved = state.apply_instructions(branches[0]).side_one.pokemon[0]
+        self.assertEqual(evolved.id.lower(), "charizardmegax")
+        self.assertEqual(evolved.ability.lower(), "toughclaws")
+        self.assertTrue(evolved.mega_evolved)
+        self.assertGreater(evolved.attack, state.side_one.pokemon[0].attack)
+        reqs[0]["side"]["pokemon"][0].update(
+            details="Charizard-Mega-X", ability="toughclaws",
+            stats={"atk": 296, "def": 258, "spa": 270, "spd": 206, "spe": 259})
+        reqs[0]["active"][0].pop("canMegaEvo")
+        next_turn = Turn(requests=reqs, messages=[
+            ["", "detailschange", "p1a: Charizard", "Charizard-Mega-X"],
+            ["", "-mega", "p1a: Charizard", "Charizard", "Charizardite X"],
+        ])
+        match.prepare("mega", next_turn)
+        for snapshot in next_turn.snapshots.values():
+            active = snapshot.user.active if snapshot.user.name == "p1" else snapshot.opponent.active
+            self.assertTrue(active.is_mega)
+            self.assertEqual(active.stats["attack"], 296)
+            self.assertEqual(active.ability, "toughclaws")
+
     def test_search_failure_is_explicit(self):
         with patch("foul_play_player.monte_carlo_tree_search", side_effect=RuntimeError("broken")):
             with self.assertRaisesRegex(RuntimeError, "broken"):
@@ -116,6 +165,23 @@ class StateBridgeTests(unittest.TestCase):
 
 
 class SynchronizationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_player_sends_mega_order_and_rejects_tera(self):
+        player = SimpleNamespace(
+            match=SimpleNamespace(choose=AsyncMock(return_value="dragonclaw-mega")),
+            side_index=0, requests={"mega": {}}, pending_messages={},
+            create_order=Mock(return_value="order"), search_error=None)
+        move = SimpleNamespace(id="dragonclaw")
+        battle = SimpleNamespace(battle_tag="mega", available_moves=[move], can_mega_evolve=True)
+        self.assertEqual(await FoulPlayPlayer.choose_move(player, battle), "order")
+        player.create_order.assert_called_once_with(move, mega=True)
+        player.match.choose.return_value = "dragonclaw-tera"
+        with self.assertRaisesRegex(RuntimeError, "disabled"):
+            await FoulPlayPlayer.choose_move(player, battle)
+        player.match.choose.return_value = "dragonclaw-mega"
+        battle.can_mega_evolve = False
+        with self.assertRaisesRegex(RuntimeError, "unavailable Mega"):
+            await FoulPlayPlayer.choose_move(player, battle)
+
     async def test_waits_for_both_private_requests_before_either_search(self):
         match = KnownSetMatch(TEAMS, 50)
         reqs = requests()

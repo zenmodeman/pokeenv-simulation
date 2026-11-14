@@ -139,7 +139,7 @@ class KnownSetMatch:
         decision = await asyncio.to_thread(self.search, snapshot)
         side = self.states[battle.battle_tag].user if index == 0 else self.states[battle.battle_tag].opponent
         side.last_selected_move = LastUsedMove(
-            side.active.name, decision.removesuffix("-tera"), battle.turn
+            side.active.name, decision.removesuffix("-mega"), battle.turn
         )
         return decision
 
@@ -152,6 +152,20 @@ class KnownSetMatch:
             values = {name: getattr(target, name) for name in inspect.signature(type(target)).parameters}
             values.update(accuracy_boost=source.active.boosts["accuracy"],
                           evasion_boost=source.active.boosts["evasion"])
+            # The engine infers Tera availability from the entire team. Mark a
+            # fainted placeholder as spent so neither side can Tera, including
+            # in future search turns, without changing the active's typing/STAB.
+            pokemon = list(target.pokemon)
+            placeholder = pokemon[-1]
+            if placeholder.hp != 0:
+                raise ValueError("Expected an empty reserve slot in a 1v1 search")
+            placeholder_values = {
+                name: getattr(placeholder, name)
+                for name in inspect.signature(type(placeholder)).parameters
+            }
+            placeholder_values["terastallized"] = True
+            pokemon[-1] = type(placeholder)(**placeholder_values)
+            values["pokemon"] = pokemon
             sides.append(type(target)(**values))
         values = {name: getattr(state, name) for name in inspect.signature(type(state)).parameters}
         values.update(side_one=sides[0], side_two=sides[1])
@@ -193,13 +207,15 @@ class FoulPlayPlayer(Player):
                 self.side_index, battle, self.requests[battle.battle_tag],
                 self.pending_messages.pop(battle.battle_tag, []),
             )
-            tera = decision.endswith("-tera")
-            move_id = decision.removesuffix("-tera")
+            if decision.endswith("-tera"):
+                raise RuntimeError("Terastallization is disabled in simulations")
+            mega = decision.endswith("-mega")
+            move_id = decision.removesuffix("-mega")
             for move in battle.available_moves:
                 if move.id == move_id:
-                    if tera and not battle.can_tera:
-                        raise RuntimeError("Foul Play selected unavailable Terastallization")
-                    return self.create_order(move, terastallize=tera)
+                    if mega and not battle.can_mega_evolve:
+                        raise RuntimeError("Foul Play selected unavailable Mega Evolution")
+                    return self.create_order(move, mega=mega)
             raise RuntimeError(f"Foul Play selected unavailable move: {decision}")
         except Exception as error:
             # poke-env handles callbacks in background tasks. Preserve failures so

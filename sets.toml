@@ -29,6 +29,7 @@ IVs: 0 Atk
 - Rest  
 - Surf  
 - Ice Beam
+'''
 
 [[sets]]
 name = "Ting Lu - Protect"
@@ -41,6 +42,7 @@ Impish Nature
 - Sand Tomb  
 - Stone Edge  
 - Protect
+'''
 
 [[sets]]
 name = "Dondozo - Noble Roar"

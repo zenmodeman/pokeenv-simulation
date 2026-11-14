@@ -10,7 +10,8 @@ python attempt.py --start-server
 
 Python 3.11+ and Rust/Cargo are required to build `poke-engine` from source.
 The engine is vendored at v0.0.48 under `vendor/poke-engine/` and built locally
-with Gen 9 Terastallization support. A local patch includes Super Luck in
+with Gen 9 mechanics support. Terastallization is disabled in simulations,
+both in Showdown and throughout engine searches. A local patch includes Super Luck in
 critical-hit stages: 12.5% for ordinary moves and 50% for high-crit moves such
 as Sky Attack and Night Slash. Battle Armor and Shell Armor still block crits.
 Re-run the install command after changing the vendored engine; an already
@@ -104,13 +105,15 @@ Rebuild the local engine after pulling this change:
 python -m pip install --force-reinstall --no-deps ./vendor/poke-engine/poke-engine-py --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
 ```
 
-With the flag, before launching a new server, the runner installs `mechanics/custom-formats.ts`
+Before launching a new server, the runner installs `mechanics/custom-formats.ts`
 into Showdown's `config/custom-formats.ts`. It refuses to overwrite a different
-custom formats file; merge the format and start Showdown manually if you already
-have one.
+custom formats file; merge the formats and start Showdown manually if you already
+have one. To replace an older copy installed by this project, run
+`cp mechanics/custom-formats.ts pokemon-showdown/config/custom-formats.ts`.
 For an existing server, install that file and restart the server first (the normal
-server startup builds it). The flag uses `gen9accuracychanges`, a separate format,
-so an unprepared server cannot silently run standard battles instead.
+server startup builds it). Simulations use `gen9localsimulation` or, with the flag, `gen9accuracychanges`.
+Both formats disable Tera, so an unprepared server cannot silently run with
+different rules.
 The search engine's rules toggle is process-wide; configure it before searches,
 and do not mix profiles in concurrent searches within the same Python process.
 
@@ -133,6 +136,14 @@ This is **known-set analysis**, rather than hidden-information ladder play. The
 full Foul Play ladder client and its opponent-set prediction are not used. With
 one known state per decision, we call the same engine search and upstream policy
 selection directly, avoiding Foul Play's multiprocessing sampler.
+
+Mega Evolution is an explicit search option: configure the base species with its
+Mega Stone (for example, `Charizard @ Charizardite X`). The engine considers
+Mega and ordinary moves for both sides, and Showdown executes the selected Mega
+Evolution. Updated forms, abilities, types, and exact stats persist on later turns.
+The engine currently assumes 31 IVs when calculating stats during a predicted
+Mega Evolution; Showdown uses the configured IVs and subsequent searches receive
+its exact stats. Tera is disabled even if a set includes a Tera Type.
 
 Search can consider consequences such as Close Combat's defensive drops, along
 with the opponent's responses and later turns. It remains approximate and limited
