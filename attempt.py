@@ -4,6 +4,7 @@ import asyncio
 import csv
 import itertools
 import json
+import logging
 from pathlib import Path
 import socket
 import subprocess
@@ -13,6 +14,37 @@ import tomllib
 from foul_play_player import FoulPlayPlayer, KnownSetMatch
 
 ROOT = Path(__file__).resolve().parent
+LOGGER = logging.getLogger("simulation")
+
+
+def standings(rows):
+    totals = {}
+    for row in rows:
+        for side, other in (("a", "b"), ("b", "a")):
+            name = row[f"set_{side}"]
+            entry = totals.setdefault(name, dict(team=name, battles=0, wins=0, losses=0, ties=0, points=0))
+            entry["battles"] += row["battles"]
+            entry["wins"] += row[f"{side}_wins"]
+            entry["losses"] += row[f"{other}_wins"]
+            entry["ties"] += row["ties"]
+            entry["points"] += row[f"{side}_wins"] + row["ties"] / 2
+    return sorted(totals.values(), key=lambda entry: (-entry["points"], entry["team"]))
+
+
+def write_standings(rows, output):
+    ranked = standings(rows)
+    with Path(output).open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["rank", "team", "battles", "wins", "losses", "ties", "points"])
+        writer.writeheader()
+        rank = 0
+        previous = None
+        for index, entry in enumerate(ranked, 1):
+            if entry["points"] != previous:
+                rank = index
+            previous = entry["points"]
+            writer.writerow(dict(rank=rank, **entry))
+            LOGGER.info("Rank %d: %s — %g points (%d wins, %d losses, %d ties)",
+                        rank, entry["team"], entry["points"], entry["wins"], entry["losses"], entry["ties"])
 
 
 def load_config(path):
@@ -67,6 +99,7 @@ async def simulate(config, output, accuracy_changes=True):
     battle_format = "gen9accuracychanges" if accuracy_changes else "gen9localsimulation"
     rows = []
     for left, right in itertools.combinations(config["sets"], 2):
+        LOGGER.info("Pairing: %s vs %s", left["name"], right["name"])
         players = []
         match = KnownSetMatch([left["team"], right["team"]], config["search_time_ms"])
         try:
@@ -80,8 +113,14 @@ async def simulate(config, output, accuracy_changes=True):
             # Alternate challenger to avoid consistently assigning one side.
             async def play():
                 for index in range(config["battles_per_pair"]):
+                    LOGGER.info("Battle %d/%d starting: %s vs %s", index + 1,
+                                config["battles_per_pair"], left["name"], right["name"])
                     challenger, opponent = (a, b) if index % 2 == 0 else (b, a)
                     await challenger.battle_against(opponent, n_battles=1)
+                    LOGGER.info("Battle %d/%d finished; cumulative %s vs %s: %d-%d-%d",
+                                index + 1, config["battles_per_pair"], left["name"], right["name"],
+                                a.n_won_battles, b.n_won_battles,
+                                a.n_finished_battles - a.n_won_battles - b.n_won_battles)
             async def watch_errors():
                 while True:
                     for player in players:
@@ -118,9 +157,11 @@ async def simulate(config, output, accuracy_changes=True):
                 writer = csv.DictWriter(handle, fieldnames=list(row))
                 writer.writeheader()
                 writer.writerows(rows)
-            print(f"{left['name']} vs {right['name']}: "
-                  f"{row['a_wins']}-{row['b_wins']}-{row['ties']} "
-                  f"(A wins {row['a_win_rate']:.1%})", flush=True)
+            summary = (f"{left['name']} vs {right['name']}: "
+                       f"{row['a_wins']}-{row['b_wins']}-{row['ties']} "
+                       f"(A wins {row['a_win_rate']:.1%})")
+            LOGGER.info(summary)
+            print(summary, flush=True)
         finally:
             await asyncio.gather(*(p.ps_client.stop_listening() for p in players))
     return rows
@@ -139,11 +180,19 @@ def main():
     parser.add_argument("--config", type=Path, default=ROOT / "sets.toml",
                         help="TOML or JSON configuration (default: sets.toml)")
     parser.add_argument("--output", type=Path, default=ROOT / "results.csv")
+    parser.add_argument("--log-file", type=Path, default=ROOT / "simulation.log")
+    parser.add_argument("--standings-output", type=Path, default=ROOT / "standings.csv")
     parser.add_argument("--start-server", action="store_true",
                         help="Start the bundled Showdown server if port 8000 is unused")
     parser.add_argument("--accuracy-changes", action="store_true",
                         help="Use 100%% base accuracy for Sky Attack and High Horsepower on both sides")
     args = parser.parse_args()
+    LOGGER.setLevel(logging.INFO)
+    LOGGER.propagate = False
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handler = logging.FileHandler(args.log_file, mode="w")
+    handler.setFormatter(formatter)
+    LOGGER.addHandler(handler)
     server = None
     try:
         config = load_config(args.config)
@@ -161,8 +210,11 @@ def main():
                 if server.poll() is not None or time.monotonic() > deadline:
                     raise RuntimeError("Showdown failed to start; see showdown.log")
                 time.sleep(0.2)
-        asyncio.run(simulate(config, args.output, args.accuracy_changes))
+        rows = asyncio.run(simulate(config, args.output, args.accuracy_changes))
+        LOGGER.info("Simulation complete. Final standings (win = 1 point, tie = 0.5):")
+        write_standings(rows, args.standings_output)
     except (ValueError, OSError, RuntimeError, asyncio.TimeoutError) as error:
+        LOGGER.error("Simulation failed: %s", error)
         parser.exit(1, f"Simulation failed: {error or 'pairing timed out; check sets and showdown.log'}\n")
     finally:
         if server is not None:

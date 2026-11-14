@@ -97,3 +97,16 @@ IVs: 0 Atk
 - Foul Play  
 - Protect
 '''
+
+[[sets]]
+name = "Heatmor - Fire Lash"
+team = '''
+Heatmor @ Custap Berry  
+Ability: Gluttony  
+EVs: 252 HP / 240 Atk / 16 Def  
+Adamant Nature  
+- Fire Lash  
+- Flare Blitz  
+- Thunder Punch  
+- Sucker Punch
+'''

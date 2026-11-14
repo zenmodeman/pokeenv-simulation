@@ -2,6 +2,7 @@
 import asyncio
 import inspect
 import json
+import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -189,6 +190,11 @@ class FoulPlayPlayer(Player):
         tag = split_messages[0][0].lstrip(">")
         pending = self.pending_messages.setdefault(tag, [])
         for message in split_messages[1:]:
+            if self.side_index == 0 and len(message) > 1 and message[1] in {
+                "turn", "move", "-damage", "-heal", "-crit", "faint", "win", "tie", "cant", "-status",
+                "-mega", "detailschange",
+            }:
+                logging.getLogger("simulation").info("%s %s", tag, "|".join(message))
             if len(message) > 2 and message[1] == "request" and message[2]:
                 self.requests[tag] = json.loads(message[2])
             else:

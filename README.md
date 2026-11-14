@@ -84,6 +84,24 @@ are overwritten for each run and saved after every completed pairing, so a later
 timeout preserves earlier pairings. Invalid sets may cause Showdown to reject a
 challenge; check console errors and the server log if a pairing times out.
 
+Live progress is written to `simulation.log`, including battle starts, turns,
+moves, damage, healing, critical hits (`|-crit|` followed by the target), Mega
+Evolution (`|-mega|` and `|detailschange|` for the resulting form), status,
+and results. The console prints only the result
+summary for each completed matchup. Follow detailed progress during a run:
+
+```bash
+tail -f simulation.log
+```
+
+After the full simulation, `standings.csv` lists every set ordered by total
+points across all opponents: one point per win and half a point per tie. Equal
+scores share a rank (displayed alphabetically). The log also shows these final
+standings. Use `--log-file PATH` and `--standings-output PATH` to
+change their locations. The log is overwritten at the start of each run; standings
+are replaced only after a successful full run, so an interrupted run can leave
+standings from an earlier run. `showdown.log` remains the server diagnostic log.
+
 ## Optional mechanics changes
 
 Enable the alternative rules for every Pokémon on both sides:
