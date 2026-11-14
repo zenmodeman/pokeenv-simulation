@@ -8,6 +8,7 @@ from pathlib import Path
 import socket
 import subprocess
 import time
+import tomllib
 
 from foul_play_player import FoulPlayPlayer, KnownSetMatch
 
@@ -15,9 +16,11 @@ ROOT = Path(__file__).resolve().parent
 
 
 def load_config(path):
-    config = json.loads(Path(path).read_text())
+    path = Path(path)
+    contents = path.read_text(encoding="utf-8")
+    config = tomllib.loads(contents) if path.suffix.lower() == ".toml" else json.loads(contents)
     if not isinstance(config, dict):
-        raise ValueError("Configuration must be a JSON object")
+        raise ValueError("Configuration must be a mapping")
     if config.get("format", "gen9customgame") != "gen9customgame":
         raise ValueError("This starter supports gen9customgame only (one Pokémon per side).")
     for field, default in [("battles_per_pair", 20), ("timeout_seconds", 300), ("search_time_ms", 100)]:
@@ -118,7 +121,8 @@ def server_available():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=ROOT / "sets.json")
+    parser.add_argument("--config", type=Path, default=ROOT / "sets.toml",
+                        help="TOML or JSON configuration (default: sets.toml)")
     parser.add_argument("--output", type=Path, default=ROOT / "results.csv")
     parser.add_argument("--start-server", action="store_true",
                         help="Start the bundled Showdown server if port 8000 is unused")
