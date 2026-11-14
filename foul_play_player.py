@@ -12,7 +12,7 @@ from poke_env.player import Player
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor" / "foul-play"))
 try:
-    from poke_engine import monte_carlo_tree_search
+    from poke_engine import generate_instructions, monte_carlo_tree_search
     from fp.config import FoulPlayConfig
     from fp.battle import protocol
     from fp.battle.state import Battle, LastUsedMove
@@ -53,6 +53,47 @@ class KnownSetsMode:
 
     def check_zoroark_from_immune(self, *args):
         pass
+
+
+def healing_protect(state, result):
+    """Break close search ties with a verified safe Leftovers recovery turn."""
+    options = [option for option in result.side_one if option.visits > 0]
+    protect = next((option for option in options if option.move_choice == "protect"), None)
+    if protect is None:
+        return False
+    best_visits = max(option.visits for option in options)
+    best_score = max(option.total_score / option.visits for option in options)
+    if (protect.visits < best_visits * 0.75
+            or protect.total_score / protect.visits < best_score - 0.01):
+        return False
+    user = state.side_one.pokemon[int(state.side_one.active_index)]
+    opponent = state.side_two.pokemon[int(state.side_two.active_index)]
+    if user.item.lower() != "leftovers" or user.hp >= user.maxhp:
+        return False
+    responses = [option.move_choice for option in result.side_two]
+    if not responses:
+        return False
+    boosts = ("attack_boost", "defense_boost", "special_attack_boost",
+              "special_defense_boost", "speed_boost", "accuracy_boost", "evasion_boost")
+    for response in responses:
+        branches = generate_instructions(state, "protect", response)
+        if not branches:
+            return False
+        for branch in branches:
+            if branch.percentage <= 0:
+                continue
+            outcome = state.apply_instructions(branch)
+            healed = outcome.side_one.pokemon[int(outcome.side_one.active_index)]
+            enemy = outcome.side_two.pokemon[int(outcome.side_two.active_index)]
+            # This also rejects consecutive-Protect failure branches, residual
+            # damage exceeding recovery, bypass attacks, setup and Substitute.
+            if (healed.hp <= user.hp or healed.status.lower() != user.status.lower()
+                    or enemy.hp > opponent.hp
+                    or any(getattr(outcome.side_two, boost) > getattr(state.side_two, boost)
+                           for boost in boosts)
+                    or set(outcome.side_two.volatile_statuses) - set(state.side_two.volatile_statuses)):
+                return False
+    return True
 
 
 @dataclass
@@ -174,6 +215,8 @@ class KnownSetMatch:
         result = monte_carlo_tree_search(state, self.search_time_ms, threads=1)
         if result.total_visits <= 0 or not result.side_one:
             raise RuntimeError("Foul Play search returned no policy; increase search_time_ms")
+        if healing_protect(state, result):
+            return "protect"
         return select_move_from_mcts_results([(result, 1.0, 0)])
 
 

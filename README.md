@@ -67,6 +67,11 @@ supported with `--config sets.json` (JSON strings still require `\n`).
 - `battles_per_pair`: number of battles for **each** pair (default 20).
 - `search_time_ms`: search budget per side per decision (default 100 ms).
   Increase to 500–1000 for more exploration; increase the pairing timeout too.
+  Among similarly supported moves with comparable average search scores, the
+  adapter prefers Protect when every modeled opponent response yields net
+  Leftovers recovery without giving the opponent healing, boosts, or new volatile
+  effects. Consecutive-Protect failure risk and residual damage are included in
+  this check; it does not force Protect over a stronger search choice.
 - `timeout_seconds`: time limit for an entire pairing (default 300).
 - `format`: `gen9customgame`; each side receives exactly one configured Pokémon.
   Custom Game allows experimental sets; it does not enforce ranked 1v1 legality.
@@ -134,6 +139,52 @@ Both formats disable Tera, so an unprepared server cannot silently run with
 different rules.
 The search engine's rules toggle is process-wide; configure it before searches,
 and do not mix profiles in concurrent searches within the same Python process.
+
+### Add another 100% accuracy move
+
+Update both implementations so Showdown executes the same mechanics that the
+search engine predicts. Use the normalized move ID (lowercase, without spaces
+or punctuation) in TypeScript and its uppercase `Choices` variant in Rust.
+For example, to add Screech:
+
+1. In `mechanics/custom-formats.ts`, include `move.id === 'screech'` in the
+   `onModifyMove` condition that sets `move.accuracy = 100`. Screech is already
+   present in this file; the remaining steps are still needed for engine parity.
+2. In `vendor/poke-engine/src/genx/choice_effects.rs`, add `| Choices::SCREECH`
+   to the `matches!` list inside `modify_choice`, under the
+   `accuracy_changes_enabled()` guard:
+
+   ```rust
+                | Choices::WHIRLPOOL
+                | Choices::SCREECH
+   ```
+
+   Keep `attacker_choice.accuracy = 100.0` inside that guard so standard rules
+   remain available. Do not change the move's base data or use an always-hit
+   setting: accuracy/evasion modifiers should still apply.
+3. Extend `tests/test_accuracy_changes.py`. For a damaging move, add its ID and
+   original accuracy to `ACCURACY_CHANGES`, and add the ID to the JavaScript
+   move list in the Showdown test. For a status move such as Screech (85% base
+   accuracy), add a separate engine test that detects its effect instead of HP
+   damage: Screech hits when the resulting `side_two.defense_boost` drops.
+   Check the original hit chance with the profile disabled, 100% with it enabled,
+   and 75% with it enabled at −1 accuracy; also check that disabling the profile
+   restores the original chance. Add the move to the Showdown test's JavaScript
+   list and expected results (`"screech": [100, 85]` for this example).
+4. Update the affected-moves list above and the `--accuracy-changes` help text
+   in `attempt.py` to describe the expanded profile.
+5. Rebuild the engine, copy the updated format, and run the accuracy checks from
+   the repository root:
+
+   ```bash
+   python -m pip install --force-reinstall --no-deps ./vendor/poke-engine/poke-engine-py --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
+   cp mechanics/custom-formats.ts pokemon-showdown/config/custom-formats.ts
+   python -m unittest discover -s tests -p 'test_accuracy_changes.py' -v
+   ```
+
+   Restart any running Showdown server so it builds and loads the new format,
+   then run simulations with `--accuracy-changes`. Changes to the Rust source
+   require reinstalling the engine; restarting Python alone is insufficient.
 
 ## Battle decisions
 

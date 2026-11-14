@@ -18,7 +18,7 @@ Adamant Nature
 '''
 
 [[sets]]
-name = "Manaphy - Rest Hydration"
+name = "Manaphy - Hydration"
 team = '''
 Manaphy @ Leftovers  
 Ability: Hydration  
@@ -32,7 +32,7 @@ IVs: 0 Atk
 '''
 
 [[sets]]
-name = "Ting Lu - Protect"
+name = "Ting Lu - Passive Recovery"
 team = '''
 Ting-Lu @ Leftovers  
 Ability: Vessel of Ruin  
@@ -45,7 +45,7 @@ Impish Nature
 '''
 
 [[sets]]
-name = "Dondozo - Noble Roar"
+name = "Dondozo - Debuff Talk"
 team = '''
 Dondozo @ Leftovers  
 Ability: Unaware  
@@ -85,7 +85,7 @@ Adamant Nature
 '''
 
 [[sets]]
-name = "Wo-Chien Leech Seed"
+name = "Wo-Chien - SeedTect"
 team = '''
 Wo-Chien @ Leftovers  
 Ability: Tablets of Ruin  
@@ -99,7 +99,7 @@ IVs: 0 Atk
 '''
 
 [[sets]]
-name = "Heatmor - Fire Lash"
+name = "Heatmor - Def Drop"
 team = '''
 Heatmor @ Custap Berry  
 Ability: Gluttony  
@@ -109,4 +109,31 @@ Adamant Nature
 - Flare Blitz  
 - Thunder Punch  
 - Sucker Punch
+'''
+
+[[sets]]
+name = "Corviknight - Bulky Offense"
+team = '''
+Corviknight @ Leftovers  
+Ability: Mirror Armor  
+EVs: 240 HP / 16 Def / 252 SpD  
+Impish Nature  
+- Bulk Up  
+- Roost  
+- Brave Bird  
+- Body Press
+'''
+
+[[sets]]
+name = "Umbreon - Poison stall"
+team = '''
+Umbreon @ Leftovers  
+Ability: Inner Focus  
+EVs: 252 HP / 40 Def / 216 SpD  
+Calm Nature  
+IVs: 0 Atk  
+- Toxic  
+- Moonlight  
+- Foul Play  
+- Screech
 '''

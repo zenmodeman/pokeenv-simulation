@@ -3,9 +3,9 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
-from poke_engine import generate_instructions
+from poke_engine import Move, Pokemon, Side, State, SideConditions, generate_instructions
 
-from foul_play_player import FoulPlayPlayer, KnownSetMatch, Turn, battle_to_poke_engine_state
+from foul_play_player import FoulPlayPlayer, KnownSetMatch, Turn, battle_to_poke_engine_state, healing_protect
 
 
 TEAMS = [
@@ -36,6 +36,40 @@ def requests():
         1: request("p2", "Dragonite", ["outrage", "earthquake"], "multiscale",
                    "choiceband", {"atk": 403, "def": 226, "spa": 212, "spd": 236, "spe": 259}, 323),
     }
+
+
+class HealingProtectTests(unittest.TestCase):
+    def state(self, response="tackle", *, hp=250, protect=0, status="none", enemy_item="none"):
+        return State(
+            side_one=Side(pokemon=[Pokemon(id="tinglu", hp=hp, maxhp=496,
+                item="leftovers", status=status, moves=[Move(id="protect")])],
+                side_conditions=SideConditions(protect=protect)),
+            side_two=Side(pokemon=[Pokemon(id="pikachu", hp=100, maxhp=200,
+                item=enemy_item, attack=400, moves=[Move(id=response)])]))
+
+    def result(self, response="tackle", visits=90, score=0.8):
+        return SimpleNamespace(
+            side_one=[SimpleNamespace(move_choice="protect", visits=visits, total_score=visits * score),
+                      SimpleNamespace(move_choice="payback", visits=100, total_score=80)],
+            side_two=[SimpleNamespace(move_choice=response)])
+
+    def test_prefers_competitive_guaranteed_healing(self):
+        self.assertTrue(healing_protect(self.state(), self.result()))
+
+    def test_rejects_full_hp_consecutive_protect_and_residual_damage(self):
+        for state in (self.state(hp=496), self.state(protect=1), self.state(status="poison")):
+            with self.subTest(state=state):
+                self.assertFalse(healing_protect(state, self.result()))
+
+    def test_rejects_setup_substitute_bypass_and_enemy_healing(self):
+        for response in ("swordsdance", "substitute", "feint", "rest"):
+            with self.subTest(response=response):
+                self.assertFalse(healing_protect(self.state(response), self.result(response)))
+        self.assertFalse(healing_protect(self.state(enemy_item="leftovers"), self.result()))
+
+    def test_preserves_search_preference_when_protect_is_worse(self):
+        self.assertFalse(healing_protect(self.state(), self.result(visits=74)))
+        self.assertFalse(healing_protect(self.state(), self.result(score=0.7)))
 
 
 class StateBridgeTests(unittest.TestCase):

@@ -49,6 +49,7 @@ pub fn modify_choice(
                 | Choices::RUINATION
                 | Choices::DRILLRUN
                 | Choices::WHIRLPOOL
+                | Choices::SCREECH
         )
     {
         attacker_choice.accuracy = 100.0;
