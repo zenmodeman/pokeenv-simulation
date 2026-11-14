@@ -1,0 +1,20 @@
+{
+  "format": "gen9customgame",
+  "battles_per_pair": 20,
+  "search_time_ms": 100,
+  "timeout_seconds": 300,
+  "sets": [
+    {
+      "name": "Garchomp - Scarf",
+      "team": "Garchomp @ Choice Scarf\nAbility: Rough Skin\nLevel: 100\nEVs: 252 Atk / 4 SpD / 252 Spe\nJolly Nature\n- Earthquake\n- Outrage\n- Stone Edge\n- Iron Head"
+    },
+    {
+      "name": "Dragonite - Band",
+      "team": "Dragonite @ Choice Band\nAbility: Multiscale\nLevel: 100\nEVs: 252 Atk / 4 SpD / 252 Spe\nAdamant Nature\n- Outrage\n- Extreme Speed\n- Earthquake\n- Fire Punch"
+    },
+    {
+      "name": "Iron Valiant - Sash",
+      "team": "Iron Valiant @ Focus Sash\nAbility: Quark Drive\nLevel: 100\nEVs: 4 Def / 252 SpA / 252 Spe\nTimid Nature\n- Moonblast\n- Close Combat\n- Thunderbolt\n- Shadow Ball"
+    }
+  ]
+}

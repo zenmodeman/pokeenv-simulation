@@ -1,0 +1,2 @@
+poke-env==0.16.1
+./vendor/poke-engine/poke-engine-py --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
