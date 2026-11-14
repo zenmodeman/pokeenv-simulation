@@ -2,7 +2,7 @@
   "format": "gen9customgame",
   "battles_per_pair": 20,
   "search_time_ms": 100,
-  "timeout_seconds": 300,
+  "timeout_seconds": 3200,
   "sets": [
     {
       "name": "Garchomp - Scarf",

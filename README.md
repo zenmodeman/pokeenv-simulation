@@ -66,13 +66,19 @@ supported with `--config sets.json` (JSON strings still require `\n`).
 
 - `battles_per_pair`: number of battles for **each** pair (default 20).
 - `search_time_ms`: search budget per side per decision (default 100 ms).
-  Increase to 500–1000 for more exploration; increase the pairing timeout too.
+  Increase to 500–1000 for more exploration; the pairing timeout scales automatically.
   Among similarly supported moves with comparable average search scores, the
   adapter prefers Protect when every modeled opponent response yields net
   Leftovers recovery without giving the opponent healing, boosts, or new volatile
   effects. Consecutive-Protect failure risk and residual damage are included in
   this check; it does not force Protect over a stronger search choice.
-- `timeout_seconds`: time limit for an entire pairing (default 300).
+- Battles still undecided after turn 100 (including residual effects) end in a draw.
+  A win on turn 100 still counts as a win. Draws receive 0.5 standings points.
+- `timeout_seconds`: optional minimum time limit for an entire pairing.
+  The effective limit is at least `battles_per_pair × 100 × (1 + 6 × search_time_ms / 1000)`
+  seconds, allowing both searches per turn, 3× search headroom, and one second
+  per turn for processing. With 20 battles and 100 ms searches this is 3200 seconds
+  (53 minutes 20 seconds). Larger explicit values are preserved.
 - `format`: `gen9customgame`; each side receives exactly one configured Pokémon.
   Custom Game allows experimental sets; it does not enforce ranked 1v1 legality.
 

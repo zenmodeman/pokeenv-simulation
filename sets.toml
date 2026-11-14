@@ -1,8 +1,60 @@
 format = "gen9customgame"
 battles_per_pair = 20
 search_time_ms = 100
-timeout_seconds = 300
+timeout_seconds = 3200
 
+[[sets]]
+name = "Umbreon - Poison stall"
+team = '''
+Umbreon @ Leftovers  
+Ability: Inner Focus  
+EVs: 252 HP / 40 Def / 216 SpD  
+Calm Nature  
+IVs: 0 Atk  
+- Toxic  
+- Moonlight  
+- Foul Play  
+- Screech
+
+[[sets]]
+name = "Garchomp - Aggressive"
+team = '''
+Garchomp @ Life Orb  
+Ability: Rough Skin  
+EVs: 4 HP / 252 Atk / 252 Spe  
+Jolly Nature  
+- Earthquake  
+- Dragon Claw  
+- Rock Slide  
+- Iron Head
+'''
+
+[[sets]]
+name = "Corviknight - Bulky Offense"
+team = '''
+Corviknight @ Leftovers  
+Ability: Mirror Armor  
+EVs: 240 HP / 16 Def / 252 SpD  
+Impish Nature  
+- Bulk Up  
+- Roost  
+- Brave Bird  
+- Body Press
+'''
+
+[[sets]]
+name = "Dondozo - Debuff Talk"
+team = '''
+Dondozo @ Leftovers  
+Ability: Oblivious 
+EVs: 200 HP / 56 Def / 252 SpD  
+Bold Nature  
+IVs: 0 Atk  
+- Rest  
+- Sleep Talk  
+- Whirlpool  
+- Noble Roar
+'''
 
 [[sets]]
 name = "Unfezant - Power Herb"
@@ -44,19 +96,7 @@ Impish Nature
 - Protect
 '''
 
-[[sets]]
-name = "Dondozo - Debuff Talk"
-team = '''
-Dondozo @ Leftovers  
-Ability: Unaware  
-EVs: 200 HP / 56 Def / 252 SpD  
-Bold Nature  
-IVs: 0 Atk  
-- Rest  
-- Sleep Talk  
-- Whirlpool  
-- Noble Roar
-'''
+
 
 [[sets]]
 name = "Skarmory - Mega"
@@ -111,29 +151,7 @@ Adamant Nature
 - Sucker Punch
 '''
 
-[[sets]]
-name = "Corviknight - Bulky Offense"
-team = '''
-Corviknight @ Leftovers  
-Ability: Mirror Armor  
-EVs: 240 HP / 16 Def / 252 SpD  
-Impish Nature  
-- Bulk Up  
-- Roost  
-- Brave Bird  
-- Body Press
-'''
 
-[[sets]]
-name = "Umbreon - Poison stall"
-team = '''
-Umbreon @ Leftovers  
-Ability: Inner Focus  
-EVs: 252 HP / 40 Def / 216 SpD  
-Calm Nature  
-IVs: 0 Atk  
-- Toxic  
-- Moonlight  
-- Foul Play  
-- Screech
+
+
 '''

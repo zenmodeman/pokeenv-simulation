@@ -1025,13 +1025,25 @@ fn get_instructions_from_boosts(
     }
     let boostable_stats = boosts.boosts.get_as_pokemon_boostable();
     for (pkmn_boostable_stat, boost) in boostable_stats.iter().filter(|(_, b)| b != &0) {
-        let side = state.get_side(&target_side_ref);
+        let target = state.get_side_immutable(&target_side_ref);
+        // Reflections cannot bounce again, but the recipient's Contrary,
+        // Clear Body, stage limits, etc. still apply normally.
+        let reflected = target_side_ref != *attacking_side_reference
+            && *boost < 0
+            && target.get_active_immutable().hp > 0
+            && target.get_active_immutable().ability == Abilities::MIRRORARMOR
+            && target.get_boost_from_boost_enum(pkmn_boostable_stat) > -6;
+        let (source_ref, recipient_ref) = if reflected {
+            (target_side_ref, *attacking_side_reference)
+        } else {
+            (*attacking_side_reference, target_side_ref)
+        };
         apply_boost_instruction(
-            side,
+            state.get_side(&recipient_ref),
             pkmn_boostable_stat,
             boost,
-            attacking_side_reference,
-            &target_side_ref,
+            &source_ref,
+            &recipient_ref,
             incoming_instructions,
         );
     }

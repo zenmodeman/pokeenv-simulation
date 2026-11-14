@@ -5,6 +5,7 @@ import csv
 import itertools
 import json
 import logging
+import math
 from pathlib import Path
 import socket
 import subprocess
@@ -55,10 +56,20 @@ def load_config(path):
         raise ValueError("Configuration must be a mapping")
     if config.get("format", "gen9customgame") != "gen9customgame":
         raise ValueError("This starter supports gen9customgame only (one Pokémon per side).")
-    for field, default in [("battles_per_pair", 20), ("timeout_seconds", 300), ("search_time_ms", 100)]:
+    for field, default in [("battles_per_pair", 20), ("search_time_ms", 100)]:
         value = config.setdefault(field, default)
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValueError(f"{field} must be a positive integer")
+    # Budget both searches per turn, with 3x headroom and one second of
+    # protocol/processing overhead per turn. Explicit values remain a floor.
+    minimum_timeout = math.ceil(
+        config["battles_per_pair"] * 100 * (6 * config["search_time_ms"] / 1000 + 1)
+    )
+    configured_timeout = config.get("timeout_seconds", minimum_timeout)
+    if (isinstance(configured_timeout, bool)
+            or not isinstance(configured_timeout, int) or configured_timeout <= 0):
+        raise ValueError("timeout_seconds must be a positive integer")
+    config["timeout_seconds"] = max(configured_timeout, minimum_timeout)
     sets = config.get("sets", [])
     if not isinstance(sets, list) or len(sets) < 2:
         raise ValueError("Configure at least two sets")
@@ -209,6 +220,8 @@ def main():
     server = None
     try:
         config = load_config(args.config)
+        LOGGER.info("Pairing timeout: %d seconds for %d battles (100-turn limit per battle)",
+                    config["timeout_seconds"], config["battles_per_pair"])
         if not server_available():
             if not args.start_server:
                 parser.error("Start Showdown on localhost:8000 or pass --start-server")

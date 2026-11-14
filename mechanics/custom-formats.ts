@@ -10,6 +10,16 @@ export const Formats: import('../sim/dex-formats').FormatList = [
         debug: true,
         battle: { trunc: Math.trunc },
         ruleset: ['[Gen 9] Custom Game', 'Terastal Clause'],
+        onResidualOrder: 1000,
+        onResidual() {
+            if (this.turn >= 100 && !this.ended) {
+                this.resolveFaints({checkWinIfNoFaints: true});
+                if (!this.ended) {
+                    this.add('message', '100-turn limit reached: draw.');
+                    this.tie();
+                }
+            }
+        },
     },
     {
         name: "[Gen 9] Accuracy Changes",
