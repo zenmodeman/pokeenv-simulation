@@ -1,4 +1,4 @@
-"""Check the opt-in profile against actual engine chance branches and Showdown."""
+"""Check the custom profile against actual engine chance branches and Showdown."""
 import json
 from pathlib import Path
 import subprocess
@@ -16,6 +16,7 @@ ACCURACY_CHANGES = {
     "ruination": 90,
     "drillrun": 95,
     "whirlpool": 85,
+    "screech": 85,
 }
 
 
@@ -32,7 +33,8 @@ class AccuracyChangesTests(unittest.TestCase):
         state = State(side_one=Side(pokemon=[attacker], accuracy_boost=accuracy),
                       side_two=Side(pokemon=[target]))
         return sum(branch.percentage for branch in generate_instructions(state, move, "splash")
-                   if state.apply_instructions(branch).side_two.pokemon[0].hp < 1000)
+                   if (state.apply_instructions(branch).side_two.defense_boost < 0 if move == "screech"
+                       else state.apply_instructions(branch).side_two.pokemon[0].hp < 1000))
 
     def test_all_moves_and_restoring_standard_rules(self):
         for move, baseline in ACCURACY_CHANGES.items():
@@ -59,7 +61,7 @@ const context = {module: {exports: {}}, exports: {}};
 vm.runInNewContext(compiled, context);
 const format = context.module.exports.Formats.find(f => f.onModifyMove);
 const result = {};
-for (const id of ['skyattack', 'highhorsepower', 'sandtomb', 'playrough', 'ruination', 'drillrun', 'whirlpool', 'stoneedge']) {
+for (const id of ['skyattack', 'highhorsepower', 'sandtomb', 'playrough', 'ruination', 'drillrun', 'whirlpool', 'screech', 'stoneedge']) {
     const move = {...Dex.moves.get(id)};
     format.onModifyMove(move);
     result[id] = [move.accuracy, Dex.moves.get(id).accuracy];

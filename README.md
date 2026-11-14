@@ -113,19 +113,20 @@ change their locations. The log is overwritten at the start of each run; standin
 are replaced only after a successful full run, so an interrupted run can leave
 standings from an earlier run. `showdown.log` remains the server diagnostic log.
 
-## Optional mechanics changes
+## Custom mechanics
 
-Enable the alternative rules for every Pokémon on both sides:
+Custom accuracy rules are enabled by default for every Pokémon on both sides:
 
 ```bash
-python attempt.py --start-server --accuracy-changes
+python attempt.py --start-server
 ```
 
-Sky Attack, High Horsepower, Sand Tomb, Play Rough, Ruination, Drill Run, and
-Whirlpool then have **100% base accuracy** in both
+Sky Attack, High Horsepower, Sand Tomb, Play Rough, Ruination, Drill Run,
+Whirlpool, and Screech have **100% base accuracy** in both
 Showdown battles and engine searches. Accuracy/evasion stages and other accuracy
 modifiers still apply. Sky Attack retains its charge turn, Power Herb interaction,
-critical-hit rate, and other effects. Without the flag, standard mechanics apply.
+critical-hit rate, and other effects. Use `--no-accuracy-changes` for standard mechanics;
+`--accuracy-changes` remains available to enable the custom profile explicitly.
 The CSV `mechanics` column records `standard` or `accuracy-changes`.
 
 Rebuild the local engine after pulling this change:
@@ -141,7 +142,8 @@ saved to `custom-formats.ts.bak` (or a numbered backup if one already exists).
 It refuses to overwrite unrelated custom formats files; merge the formats and
 start Showdown manually if you already have one.
 For an existing server, install that file and restart the server first (the normal
-server startup builds it). Simulations use `gen9localsimulation` or, with the flag, `gen9accuracychanges`.
+server startup builds it). Simulations use `gen9accuracychanges` by default or `gen9localsimulation` with
+`--no-accuracy-changes`. The log records the selected profile and format.
 Both formats disable Tera, so an unprepared server cannot silently run with
 different rules.
 The search engine's rules toggle is process-wide; configure it before searches,
@@ -221,9 +223,14 @@ The engine currently assumes 31 IVs when calculating stats during a predicted
 Mega Evolution; Showdown uses the configured IVs and subsequent searches receive
 its exact stats. Tera is disabled even if a set includes a Tera Type.
 
-Search can consider consequences such as Close Combat's defensive drops, along
-with the opponent's responses and later turns. It remains approximate and limited
-by its time budget and poke-engine's mechanics coverage. This adapter supports
+Search can consider consequences such as Close Combat's defensive drops and
+Mirror Armor reflecting Noble Roar (including both stat drops) or damaging
+moves' secondary stat drops, along with the opponent's responses and later turns.
+After updating the vendored engine, rebuild it with the local pip command above.
+Ability activations (`-ability`) and stat drops (`-unboost`) are recorded in
+`simulation.log`, including Mirror Armor and each reflected drop.
+
+Search remains approximate and limited by its time budget and poke-engine's mechanics coverage. This adapter supports
 Gen 9 singles with one Pokémon per side; it does not support team switching,
 Dynamax, or Z-Moves. Unsupported engine choices or adapter failures stop the run
 with an error; there is no heuristic or random fallback.
@@ -241,3 +248,8 @@ Tests cover exact known-set state, independent player perspectives, PP/disabled
 moves, persisted defense drops, engine-generated Close Combat consequences, and
 a legal MCTS decision. To check real battles quickly, use a copy of `sets.toml`
 with `battles_per_pair` set to 1 and run it with `--config` and `--output`.
+
+Both players know the opponent’s complete set before turn one, including ability,
+item, moves, EVs, nature, and exact stats. Pure stat-lowering moves such as Screech
+and Noble Roar are excluded against known Mirror Armor when another move is
+available, unless the user can bypass it or benefit from reflected drops.

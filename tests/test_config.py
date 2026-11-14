@@ -3,10 +3,16 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from attempt import ROOT, load_config
+from attempt import ROOT, build_parser, load_config
 
 
 class ConfigTests(unittest.TestCase):
+    def test_custom_accuracy_is_default_and_standard_is_explicit(self):
+        parser = build_parser()
+        self.assertTrue(parser.parse_args([]).accuracy_changes)
+        self.assertTrue(parser.parse_args(["--accuracy-changes"]).accuracy_changes)
+        self.assertFalse(parser.parse_args(["--no-accuracy-changes"]).accuracy_changes)
+
     def test_multiline_toml_matches_json(self):
         with tempfile.TemporaryDirectory() as directory:
             toml_path = Path(directory) / "sets.toml"

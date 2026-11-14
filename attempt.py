@@ -121,6 +121,8 @@ async def simulate(config, output, accuracy_changes=True):
     if configure is not None:
         configure(accuracy_changes)
     battle_format = "gen9accuracychanges" if accuracy_changes else "gen9localsimulation"
+    LOGGER.info("Mechanics: %s; format: %s; knowledge: both complete sets",
+                "accuracy-changes" if accuracy_changes else "standard", battle_format)
     rows = []
     for left, right in itertools.combinations(config["sets"], 2):
         LOGGER.info("Pairing: %s vs %s", left["name"], right["name"])
@@ -199,7 +201,7 @@ def server_available():
         return False
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=ROOT / "sets.toml",
                         help="TOML or JSON configuration (default: sets.toml)")
@@ -208,8 +210,13 @@ def main():
     parser.add_argument("--standings-output", type=Path, default=ROOT / "standings.csv")
     parser.add_argument("--start-server", action="store_true",
                         help="Start the bundled Showdown server if port 8000 is unused")
-    parser.add_argument("--accuracy-changes", action="store_true",
-                        help="Use 100%% base accuracy for Sky Attack and High Horsepower on both sides")
+    parser.add_argument("--accuracy-changes", action=argparse.BooleanOptionalAction, default=True,
+                        help="Use custom 100%% base accuracy on both sides (default: enabled)")
+    return parser
+
+
+def main():
+    parser = build_parser()
     args = parser.parse_args()
     LOGGER.setLevel(logging.INFO)
     LOGGER.propagate = False

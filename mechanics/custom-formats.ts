@@ -32,7 +32,8 @@ export const Formats: import('../sim/dex-formats').FormatList = [
             if (move.id === 'skyattack' || move.id === 'highhorsepower' 
                 || move.id === 'sandtomb' || move.id === 'playrough'
                 || move.id === 'ruination' || move.id === 'drillrun'
-                || move.id === 'whirlpool' || move.id == 'screech') {
+                || move.id === 'whirlpool' || move.id === 'screech'
+                ) {
                 move.accuracy = 100;
             }
         },

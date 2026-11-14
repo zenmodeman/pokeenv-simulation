@@ -15,6 +15,7 @@ IVs: 0 Atk
 - Moonlight  
 - Foul Play  
 - Screech
+'''
 
 [[sets]]
 name = "Garchomp - Aggressive"
@@ -149,9 +150,4 @@ Adamant Nature
 - Flare Blitz  
 - Thunder Punch  
 - Sucker Punch
-'''
-
-
-
-
 '''

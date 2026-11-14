@@ -15,6 +15,7 @@ from poke_env.player import Player
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor" / "foul-play"))
 try:
     from poke_engine import generate_instructions, monte_carlo_tree_search
+    from fp.data import all_move_json
     from fp.config import FoulPlayConfig
     from fp.battle import protocol
     from fp.battle.state import Battle, LastUsedMove
@@ -55,6 +56,53 @@ class KnownSetsMode:
 
     def check_zoroark_from_immune(self, *args):
         pass
+
+
+def reflected_status_moves(user, opponent):
+    """Pure debuffs have no benefit against a known Mirror Armor target."""
+    if (opponent.ability.lower() != "mirrorarmor"
+            or user.ability.lower() in {"moldbreaker", "teravolt", "turboblaze",
+                                        "contrary", "defiant", "competitive"}):
+        return set()
+    blocked = set()
+    for move in user.moves:
+        data = all_move_json.get(move.id.lower(), {})
+        boosts = data.get("boosts", {})
+        if (data.get("category") == "status" and data.get("target") == "normal"
+                and boosts and all(amount < 0 for amount in boosts.values())
+                and not any(data.get(key) for key in
+                            ("self", "selfSwitch", "status", "volatileStatus", "sideCondition"))):
+            blocked.add(move.id.lower())
+    return blocked
+
+
+def exclude_reflected_status_moves(state):
+    """Apply the same known-ability restriction to both search perspectives."""
+    sides = []
+    for own, other in ((state.side_one, state.side_two), (state.side_two, state.side_one)):
+        active = own.pokemon[int(own.active_index)]
+        enemy = other.pokemon[int(other.active_index)]
+        blocked = reflected_status_moves(active, enemy)
+        # Leave forced choices available when PP/disable leaves no alternative.
+        if blocked and any(m.id.lower() not in blocked and m.pp > 0 and not m.disabled
+                           and m.id.lower() != "none" for m in active.moves):
+            moves = []
+            for move in active.moves:
+                values = {k: getattr(move, k) for k in inspect.signature(type(move)).parameters}
+                if move.id.lower() in blocked:
+                    values["disabled"] = True
+                moves.append(type(move)(**values))
+            values = {k: getattr(active, k) for k in inspect.signature(type(active)).parameters}
+            values["moves"] = moves
+            pokemon = list(own.pokemon)
+            pokemon[int(own.active_index)] = type(active)(**values)
+            values = {k: getattr(own, k) for k in inspect.signature(type(own)).parameters}
+            values["pokemon"] = pokemon
+            own = type(own)(**values)
+        sides.append(own)
+    values = {k: getattr(state, k) for k in inspect.signature(type(state)).parameters}
+    values.update(side_one=sides[0], side_two=sides[1])
+    return type(state)(**values)
 
 
 def select_search_move(state, result):
@@ -233,6 +281,7 @@ class KnownSetMatch:
         values = {name: getattr(state, name) for name in inspect.signature(type(state)).parameters}
         values.update(side_one=sides[0], side_two=sides[1])
         state = type(state)(**values)
+        state = exclude_reflected_status_moves(state)
         result = monte_carlo_tree_search(state, self.search_time_ms, threads=1)
         if result.total_visits <= 0 or not result.side_one:
             raise RuntimeError("Foul Play search returned no policy; increase search_time_ms")

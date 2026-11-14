@@ -127,6 +127,18 @@ class StateBridgeTests(unittest.TestCase):
         self.assertEqual(b.opponent.active.hp, 289)
         self.assertEqual(self.match.states["test-battle"].user.active.hp, 289)
 
+    def test_complete_unrevealed_sets_reach_both_search_perspectives(self):
+        for index, expected in ((0, ("multiscale", "choiceband", {"outrage", "earthquake"}, 403)),
+                                (1, ("quarkdrive", "focussash", {"closecombat", "moonblast"}, 266))):
+            with patch("foul_play_player.monte_carlo_tree_search", side_effect=RuntimeError("capture")) as search:
+                with self.assertRaisesRegex(RuntimeError, "capture"):
+                    self.match.search(self.first.snapshots[index])
+            enemy = search.call_args.args[0].side_two.pokemon[0]
+            self.assertEqual(enemy.ability.lower(), expected[0])
+            self.assertEqual(enemy.item.lower(), expected[1])
+            self.assertEqual({m.id.lower() for m in enemy.moves if m.id.lower() != "none"}, expected[2])
+            self.assertEqual(enemy.attack, expected[3])
+
     def test_stat_drops_pp_item_and_disabled_moves_reach_search(self):
         reqs = requests()
         reqs[0]["side"]["pokemon"][0]["condition"] = "101/289"
