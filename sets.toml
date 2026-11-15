@@ -3,8 +3,11 @@ battles_per_pair = 20
 search_time_ms = 100
 timeout_seconds = 3200
 
+
 [[sets]]
-name = "Umbreon - Poison stall"
+
+[[sets]]
+name = "Umbreon - Foul Poison"
 team = '''
 Umbreon @ Leftovers  
 Ability: Inner Focus  

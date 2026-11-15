@@ -73,6 +73,8 @@ supported with `--config sets.json` (JSON strings still require `\n`).
   effects. Consecutive-Protect failure risk and residual damage are included in
   this check; it does not force Protect over a stronger search choice.
 - Battles still undecided after turn 100 (including residual effects) end in a draw.
+- If the first three battles of a pairing are draws, the remaining battles are skipped
+  and all configured battles for that pairing count as draws in results and standings.
   A win on turn 100 still counts as a win. Draws receive 0.5 standings points.
 - `timeout_seconds`: optional minimum time limit for an entire pairing.
   The effective limit is at least `battles_per_pair × 100 × (1 + 6 × search_time_ms / 1000)`

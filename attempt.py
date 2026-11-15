@@ -147,6 +147,10 @@ async def simulate(config, output, accuracy_changes=True):
                                 index + 1, config["battles_per_pair"], left["name"], right["name"],
                                 a.n_won_battles, b.n_won_battles,
                                 a.n_finished_battles - a.n_won_battles - b.n_won_battles)
+                    if index == 2 and a.n_won_battles == b.n_won_battles == 0:
+                        LOGGER.info("First three battles were draws; counting all %d battles "
+                                    "in this pairing as draws", config["battles_per_pair"])
+                        break
             async def watch_errors():
                 while True:
                     for player in players:
@@ -173,6 +177,8 @@ async def simulate(config, output, accuracy_changes=True):
                 error_task.cancel()
                 await asyncio.gather(play_task, error_task, return_exceptions=True)
             total = a.n_finished_battles
+            if total == 3 and a.n_won_battles == b.n_won_battles == 0:
+                total = config["battles_per_pair"]
             row = dict(mechanics="accuracy-changes" if accuracy_changes else "standard", policy="foul-play-mcts", search_time_ms=config["search_time_ms"], set_a=left["name"], set_b=right["name"], battles=total,
                        a_wins=a.n_won_battles, b_wins=b.n_won_battles,
                        ties=total - a.n_won_battles - b.n_won_battles,
