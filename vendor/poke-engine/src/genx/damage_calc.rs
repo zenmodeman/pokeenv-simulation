@@ -477,6 +477,14 @@ fn get_attacking_and_defending_stats(
         _ => panic!("Can only calculate damage for physical or special moves"),
     }
 
+    // Critical hits still respect Unaware when ignoring the opponent's stages.
+    if !should_calc_attacker_boost {
+        crit_attacking_stat = attacking_final_stat;
+    }
+    if !should_calc_defender_boost {
+        crit_defending_stat = defending_final_stat;
+    }
+
     #[cfg(any(
         feature = "gen4",
         feature = "gen5",

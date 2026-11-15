@@ -5,6 +5,113 @@ timeout_seconds = 3200
 
 
 [[sets]]
+name = "Mismagius - Debuffs"
+team = '''
+Mismagius @ Sitrus Berry  
+Ability: Levitate  
+EVs: 44 HP / 212 SpA / 252 Spe  
+Timid Nature  
+IVs: 0 Atk  
+- Fake Tears  
+- Draining Kiss  
+- Charm  
+- Shadow Ball
+'''
+
+[[sets]]
+name = "Glimmora - Power Herb"
+team = '''
+Glimmora @ Power Herb  
+Ability: Corrosion  
+EVs: 252 HP / 40 Def / 216 SpA  
+Modest Nature  
+IVs: 0 Atk  
+- Meteor Beam  
+- Power Gem  
+- Earth Power  
+- Sludge Bomb
+'''
+
+[[sets]]
+name = "Sirfetch'd - Leek"
+team = '''
+Sirfetch’d @ Leek  
+Ability: Scrappy  
+EVs: 252 HP / 216 Atk / 40 SpD  
+Adamant Nature  
+- Close Combat  
+- Swords Dance  
+- Night Slash  
+- Leaf Blade
+'''
+
+[[sets]]
+name = "Clefable - Mega"
+team = '''
+Clefable @ Clefablite  
+Ability: Unaware  
+EVs: 252 HP / 240 Def / 16 SpD  
+Calm Nature  
+IVs: 0 Atk  
+- Cosmic Power  
+- Moonlight  
+- Moonblast  
+- Stored Power
+'''
+
+[[sets]]
+name = "Articuno - Sheer Reader"
+team = '''
+Articuno @ Sitrus Berry  
+Ability: Pressure  
+EVs: 252 HP / 160 Def / 96 SpD  
+Calm Nature  
+IVs: 0 Atk  
+- Mind Reader  
+- Sheer Cold  
+- Ancient Power  
+- Roost
+'''
+
+[[sets]]
+name = "Glastrier - Chesto"
+team = '''
+Glastrier @ Chesto Berry  
+Ability: Chilling Neigh  
+EVs: 252 HP / 176 Atk / 80 SpD  
+Adamant Nature  
+- Avalanche  
+- High Horsepower  
+- Rest  
+- Close Combat
+'''
+
+[[sets]]
+name = "Buzzwole - Bulky Offense"
+team = '''
+Buzzwole @ Sitrus Berry  
+Ability: Beast Boost  
+EVs: 232 HP / 24 Atk / 252 SpD  
+Adamant Nature  
+- Lunge  
+- Drain Punch  
+- Bulk Up  
+- Ice Punch
+'''
+
+[[sets]]
+name = "Azelf - Anti-Setup"
+team = '''
+Azelf @ Sitrus Berry  
+Ability: Levitate  
+EVs: 4 HP / 252 SpA / 252 Spe  
+Timid Nature  
+IVs: 0 Atk  
+- Psyshock
+- Dazzling Gleam  
+- Flamethrower  
+- Taunt
+'''
 
 [[sets]]
 name = "Umbreon - Foul Poison"
@@ -40,7 +147,7 @@ Corviknight @ Leftovers
 Ability: Mirror Armor  
 EVs: 240 HP / 16 Def / 252 SpD  
 Impish Nature  
-- Bulk Up  
+- Screech 
 - Roost  
 - Brave Bird  
 - Body Press

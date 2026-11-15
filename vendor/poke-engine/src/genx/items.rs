@@ -63,6 +63,7 @@ define_enum_with_from_str! {
         HABANBERRY,
         KASIBBERRY,
         KEBIABERRY,
+        LEEK,
         LEFTOVERS,
         LIFEORB,
         LUSTROUSORB,

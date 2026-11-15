@@ -13,7 +13,8 @@ The engine is vendored at v0.0.48 under `vendor/poke-engine/` and built locally
 with Gen 9 mechanics support. Terastallization is disabled in simulations,
 both in Showdown and throughout engine searches. A local patch includes Super Luck in
 critical-hit stages: 12.5% for ordinary moves and 50% for high-crit moves such
-as Sky Attack and Night Slash. Battle Armor and Shell Armor still block crits.
+as Sky Attack and Night Slash. Leek adds two stages for Sirfetch’d and Farfetch’d,
+giving high-crit moves a 100% critical-hit chance. Battle Armor and Shell Armor still block crits.
 Re-run the install command after changing the vendored engine; an already
 installed PyPI wheel does not contain this patch.
 If you previously installed the same engine version with other build features,
@@ -221,6 +222,11 @@ Mega Evolution is an explicit search option: configure the base species with its
 Mega Stone (for example, `Charizard @ Charizardite X`). The engine considers
 Mega and ordinary moves for both sides, and Showdown executes the selected Mega
 Evolution. Updated forms, abilities, types, and exact stats persist on later turns.
+For Clefable with Clefablite, this lets the AI delay evolution to retain Unaware
+or avoid new Electric, Ice, and Rock weaknesses, and evolve when the stat gains,
+Ground immunity, or Magic Bounce are useful. Toxic and Screech are reflected
+on the evolution turn. These tradeoffs are evaluated by search rather than a
+mandatory first-turn evolution rule.
 The engine currently assumes 31 IVs when calculating stats during a predicted
 Mega Evolution; Showdown uses the configured IVs and subsequent searches receive
 its exact stats. Tera is disabled even if a set includes a Tera Type.

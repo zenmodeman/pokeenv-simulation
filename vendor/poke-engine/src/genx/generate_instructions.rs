@@ -38,7 +38,7 @@ use crate::instruction::{
 };
 use crate::state::{
     LastUsedMove, PokemonBoostableStat, PokemonIndex, PokemonMoveIndex, PokemonSideCondition,
-    PokemonStatus, PokemonType, Side, SideMovesFirst, SideReference, State,
+    PokemonStatus, PokemonType, Pokemon, Side, SideMovesFirst, SideReference, State,
 };
 use std::cmp;
 
@@ -56,16 +56,22 @@ pub const BASE_CRIT_CHANCE: f32 = 1.0 / 16.0;
 ))]
 pub const BASE_CRIT_CHANCE: f32 = 1.0 / 24.0;
 
-// High-crit moves and Super Luck each add one critical-hit stage.
-fn critical_hit_rate(move_id: Choices, attacker: Abilities, defender: Abilities) -> f32 {
+// High-crit moves and Super Luck add one stage; species-specific Leek adds two.
+fn critical_hit_rate(move_id: Choices, attacker: &Pokemon, defender: Abilities) -> f32 {
     if matches!(defender, Abilities::BATTLEARMOR | Abilities::SHELLARMOR) {
         return 0.0;
     }
     if move_id.guaranteed_crit() {
         return 1.0;
     }
+    let leek_bonus = if attacker.item == Items::LEEK
+        && attacker.ability != Abilities::KLUTZ
+        && matches!(attacker.id, crate::pokemon::PokemonName::SIRFETCHD
+            | crate::pokemon::PokemonName::FARFETCHD
+            | crate::pokemon::PokemonName::FARFETCHDGALAR)
+    { 2 } else { 0 };
     let stage = u8::from(move_id.increased_crit_ratio())
-        + u8::from(attacker == Abilities::SUPERLUCK);
+        + u8::from(attacker.ability == Abilities::SUPERLUCK) + leek_bonus;
     match stage {
         0 => BASE_CRIT_CHANCE,
         1 => 1.0 / 8.0,
@@ -76,7 +82,13 @@ fn critical_hit_rate(move_id: Choices, attacker: Abilities, defender: Abilities)
                 1.0 / 2.0
             }
         }
-        _ => unreachable!(),
+        _ => {
+            if cfg!(any(feature = "gen4", feature = "gen5")) {
+                if stage == 3 { 1.0 / 3.0 } else { 1.0 / 2.0 }
+            } else {
+                1.0
+            }
+        }
     }
 }
 
@@ -2437,7 +2449,7 @@ pub fn generate_instructions_from_move(
 
             let crit_rate = critical_hit_rate(
                 choice.move_id,
-                attacker_side.get_active_immutable().ability,
+                attacker_side.get_active_immutable(),
                 defender_active.ability,
             );
 
@@ -2454,7 +2466,7 @@ pub fn generate_instructions_from_move(
         } else if branch_on_damage && max_damage_dealt < defender_active.hp {
             let crit_rate = critical_hit_rate(
                 choice.move_id,
-                attacker_side.get_active_immutable().ability,
+                attacker_side.get_active_immutable(),
                 defender_active.ability,
             );
             let mut branch_ins = incoming_instructions.clone();

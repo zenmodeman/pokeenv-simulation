@@ -2690,6 +2690,11 @@ pub fn ability_modify_attack_against(
         Abilities::MAGICBOUNCE => {
             if attacker_choice.flags.reflectable {
                 attacker_choice.target = MoveTarget::User;
+                if let Some(boost) = &mut attacker_choice.boost {
+                    if boost.target == MoveTarget::Opponent {
+                        boost.target = MoveTarget::User;
+                    }
+                }
                 if let Some(side_condition) = &mut attacker_choice.side_condition {
                     if side_condition.target == MoveTarget::Opponent {
                         side_condition.target = MoveTarget::User;

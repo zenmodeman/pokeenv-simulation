@@ -50,6 +50,7 @@ pub fn modify_choice(
                 | Choices::DRILLRUN
                 | Choices::WHIRLPOOL
                 | Choices::SCREECH
+                | Choices::METEORBEAM
         )
     {
         attacker_choice.accuracy = 100.0;
