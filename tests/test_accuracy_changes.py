@@ -17,6 +17,7 @@ ACCURACY_CHANGES = {
     "drillrun": 95,
     "whirlpool": 85,
     "screech": 85,
+    "meteorbeam": 90,
 }
 
 
@@ -61,7 +62,7 @@ const context = {module: {exports: {}}, exports: {}};
 vm.runInNewContext(compiled, context);
 const format = context.module.exports.Formats.find(f => f.onModifyMove);
 const result = {};
-for (const id of ['skyattack', 'highhorsepower', 'sandtomb', 'playrough', 'ruination', 'drillrun', 'whirlpool', 'screech', 'stoneedge']) {
+for (const id of ['skyattack', 'highhorsepower', 'sandtomb', 'playrough', 'ruination', 'drillrun', 'whirlpool', 'screech', 'meteorbeam', 'stoneedge']) {
     const move = {...Dex.moves.get(id)};
     format.onModifyMove(move);
     result[id] = [move.accuracy, Dex.moves.get(id).accuracy];

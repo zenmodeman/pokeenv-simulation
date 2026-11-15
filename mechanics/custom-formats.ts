@@ -33,7 +33,7 @@ export const Formats: import('../sim/dex-formats').FormatList = [
                 || move.id === 'sandtomb' || move.id === 'playrough'
                 || move.id === 'ruination' || move.id === 'drillrun'
                 || move.id === 'whirlpool' || move.id === 'screech'
-                || move.id === 'Meteor Beam'
+                || move.id === 'meteorbeam'
                 ) {
                 move.accuracy = 100;
             }

@@ -200,6 +200,7 @@ def battler_to_poke_engine_side(
             slowstart=battler.active.volatile_status_durations[constants.SLOW_START],
             taunt=battler.active.volatile_status_durations[constants.TAUNT],
             yawn=battler.active.volatile_status_durations[constants.YAWN],
+            partiallytrapped=battler.active.volatile_status_durations["partiallytrapped"],
         ),
         substitute_health=substitute_health,
         attack_boost=battler.active.boosts[constants.ATTACK],

@@ -6,6 +6,7 @@ import logging
 import random
 from copy import deepcopy
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -76,13 +77,55 @@ def reflected_status_moves(user, opponent):
     return blocked
 
 
+def irrelevant_attack_drops(user, opponent, opponent_side):
+    """Exclude pure Attack drops only when the known set cannot use Attack.
+
+    Be conservative about status moves (Transform, move copying, etc.) and
+    attacks whose category can change. Keep confusion/Foul Play interactions.
+    """
+    if (opponent.ability.lower() == "mirrorarmor"
+            and user.ability.lower() not in {"moldbreaker", "teravolt", "turboblaze"}):
+        return set()
+    indirect = {"transform", "mimic", "copycat", "metronome", "assist", "mefirst",
+                "mirrormove", "sketch", "naturepower", "suckerpunch", "thunderclap",
+                "counter", "mirrorcoat", "metalburst", "destinybond", "grudge"}
+    fixed = {"foulplay", "bodypress", "seismictoss", "nightshade", "superfang",
+             "endeavor", "finalgambit", "counter", "metalburst", "bide"}
+    enemy_moves = [m.id.lower() for m in opponent.moves if m.id.lower() != "none"]
+    if (not enemy_moves
+            or not any(m.id.lower() != "none" and m.pp > 0 and not m.disabled
+                       for m in opponent.moves)
+            or any(m in indirect | {"terablast", "shellsidearm", "photongeyser", "lightthatburnsthesky"}
+                   or not all_move_json.get(m)
+                   or (all_move_json[m].get("category") == "physical" and m not in fixed)
+                   for m in enemy_moves)
+            or "confusion" in {v.lower() for v in opponent_side.volatile_statuses}
+            or any(m.id.lower() in indirect | {"foulplay"}
+                   or all_move_json.get(m.id.lower(), {}).get("volatileStatus") == "confusion"
+                   or (all_move_json.get(m.id.lower(), {}).get("secondary") or {})
+                   .get("volatileStatus") == "confusion"
+                   for m in user.moves)):
+        return set()
+    blocked = set()
+    for move in user.moves:
+        data = all_move_json.get(move.id.lower(), {})
+        if (data.get("category") == "status" and data.get("target") == "normal"
+                and data.get("boosts", {}).get("attack", 0) < 0
+                and set(data.get("boosts", {})) == {"attack"}
+                and not any(data.get(key) for key in
+                            ("self", "selfSwitch", "status", "volatileStatus", "sideCondition"))):
+            blocked.add(move.id.lower())
+    return blocked
+
+
 def exclude_reflected_status_moves(state):
-    """Apply the same known-ability restriction to both search perspectives."""
+    """Apply known-set debuff restrictions to both search perspectives."""
     sides = []
     for own, other in ((state.side_one, state.side_two), (state.side_two, state.side_one)):
         active = own.pokemon[int(own.active_index)]
         enemy = other.pokemon[int(other.active_index)]
-        blocked = reflected_status_moves(active, enemy)
+        blocked = (reflected_status_moves(active, enemy)
+                   | irrelevant_attack_drops(active, enemy, other))
         # Leave forced choices available when PP/disable leaves no alternative.
         if blocked and any(m.id.lower() not in blocked and m.pp > 0 and not m.disabled
                            and m.id.lower() != "none" for m in active.moves):
@@ -105,8 +148,99 @@ def exclude_reflected_status_moves(state):
     return type(state)(**values)
 
 
+@lru_cache(maxsize=None)
+def effect_fields(cls):
+    return tuple(name for name in inspect.signature(cls).parameters
+                 if name not in {"moves", "last_used_move", "damage_dealt"})
+
+
+def effect_signature(value):
+    """State effects relevant to a turn, excluding PP and move-history bookkeeping."""
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, (list, tuple)):
+        return tuple(effect_signature(v) for v in value)
+    if isinstance(value, (set, frozenset)):
+        return tuple(sorted(effect_signature(v) for v in value))
+    return tuple((name, effect_signature(getattr(value, name)))
+                 for name in effect_fields(type(value)))
+
+
+def ineffective_search_moves(state, result):
+    """Recognize guaranteed no-effect root choices against every legal response.
+
+    Compare complete chance distributions with taking no action. Using actual
+    responses preserves healing before incoming damage, Roost type changes,
+    Corrosion, Contrary, and other contextual mechanics. Do not carry this
+    turn's restrictions into future search nodes.
+    """
+    user = state.side_one.pokemon[int(state.side_one.active_index)]
+    enemy = state.side_two.pokemon[int(state.side_two.active_index)]
+    # Move-history and move-copy effects can make an otherwise empty action useful.
+    if any(m.id.lower() in {"encore", "disable", "spite", "grudge", "instruct",
+                           "mimic", "copycat", "transform", "sketch", "mirrormove"}
+           for m in enemy.moves):
+        return set()
+    responses = [o.move_choice for o in result.side_two]
+    if not responses:
+        return set()
+
+    def distribution(move, response):
+        effects = {}
+        for branch in generate_instructions(state, move, response):
+            if branch.percentage > 0:
+                signature = effect_signature(state.apply_instructions(branch))
+                effects[signature] = effects.get(signature, 0.0) + branch.percentage
+        return effects
+
+    baselines = {response: distribution("none", response) for response in responses}
+    blocked = set()
+    known = {m.id.lower() for m in user.moves}
+    for option in result.side_one:
+        choice = option.move_choice
+        move = choice.removesuffix("-mega")
+        if move not in known or choice != move or move in {"struggle", "none"}:
+            continue
+        # A status bluff can exhaust conditional attacks or avoid retaliation.
+        if (all_move_json.get(move, {}).get("category") == "status"
+                and any(m.id.lower() in {"suckerpunch", "thunderclap", "counter",
+                                         "mirrorcoat", "metalburst", "destinybond"}
+                        for m in enemy.moves)):
+            continue
+        # Copying moves changes the move set omitted from effect_signature.
+        if move in {"mimic", "transform", "sketch", "metronome", "assist", "copycat",
+                    "mirrormove", "mefirst", "naturepower"}:
+            continue
+        for response, baseline in baselines.items():
+            effects = distribution(choice, response)
+            if (effects.keys() != baseline.keys()
+                    or any(abs(effects[k] - baseline[k]) > 0.0001 for k in effects)):
+                break
+        else:
+            blocked.add(choice)
+    return blocked
+
+
 def select_search_move(state, result):
-    """Gate repeated Protect before applying any contextual move preferences."""
+    """Select useful, supported choices while accounting for repeated Protect risk."""
+    blocked = ineffective_search_moves(state, result)
+    options = [o for o in result.side_one if o.move_choice not in blocked]
+    alternatives = [o.total_score / o.visits for o in options if o.visits > 0]
+    if alternatives:
+        # Doing nothing can still win through residual damage or PP exhaustion.
+        # This is a tie preference, never an override of a clearly better score.
+        blocked = {o.move_choice for o in result.side_one if o.move_choice in blocked
+                   and (o.visits == 0 or o.total_score / o.visits <= max(alternatives) + 0.01)}
+        options = [o for o in result.side_one if o.move_choice not in blocked]
+    if blocked and options:
+        user = state.side_one.pokemon[int(state.side_one.active_index)]
+        logging.getLogger("simulation").info(
+            "Excluded no-effect choices user=%s moves=%s state=%s",
+            user.id, sorted(blocked), state.to_string())
+        result = SimpleNamespace(side_one=options, side_two=result.side_two,
+                                 total_visits=result.total_visits)
+        if not any(o.visits > 0 for o in options):
+            return random.choice(options).move_choice
     streak = state.side_one.side_conditions.protect
     if streak > 0 and any(
         option.move_choice.removesuffix("-mega") == "protect" for option in result.side_one
@@ -121,6 +255,16 @@ def select_search_move(state, result):
             return random.choice(options).move_choice
     if healing_protect(state, result):
         return "protect"
+    visited = [o for o in result.side_one if o.visits > 0]
+    if visited:
+        visit_leader = max(visited, key=lambda o: o.visits)
+        candidates = [o for o in visited if o.visits >= visit_leader.visits * 0.75]
+        best_score = max(o.total_score / o.visits for o in candidates)
+        candidates = [o for o in candidates if o.total_score / o.visits >= best_score - 0.01]
+        result = SimpleNamespace(side_one=candidates, side_two=result.side_two,
+                                 total_visits=result.total_visits)
+    if not visited:
+        return random.choice(result.side_one).move_choice
     return select_move_from_mcts_results([(result, 1.0, 0)])
 
 
@@ -224,9 +368,23 @@ class KnownSetMatch:
                     and message[3].lower() in {"move: mind reader", "move: lock-on"}):
                 side = state.user if message[2].startswith(state.user.name) else state.opponent
                 side.active.volatile_statuses.append("lockon")
+            if (action == "-activate" and len(message) > 3
+                    and message[3].lower() in {"move: whirlpool", "move: sand tomb", "move: bind",
+                                              "move: wrap", "move: fire spin", "move: clamp",
+                                              "move: infestation", "move: magma storm", "move: snap trap",
+                                              "move: thunder cage"}):
+                side = state.user if message[2].startswith(state.user.name) else state.opponent
+                side.active.volatile_status_durations["partiallytrapped"] = 0
             handler = MODIFIERS.get(action)
             if handler:
                 getattr(protocol, handler)(state, message)
+            if action == "upkeep":
+                for side in (state.user, state.opponent):
+                    if "partiallytrapped" in side.active.volatile_statuses:
+                        side.active.volatile_status_durations["partiallytrapped"] += 1
+            if action == "-end" and "[partiallytrapped]" in message:
+                side = state.user if message[2].startswith(state.user.name) else state.opponent
+                side.active.volatile_status_durations["partiallytrapped"] = 0
 
         # Requests contain exact HP (not the rounded opponent percentage), stats,
         # current items/abilities, legal moves, disabled flags, and remaining PP.
@@ -294,7 +452,22 @@ class KnownSetMatch:
         result = monte_carlo_tree_search(state, self.search_time_ms, threads=1)
         if result.total_visits <= 0 or not result.side_one:
             raise RuntimeError("Foul Play search returned no policy; increase search_time_ms")
-        return select_search_move(state, result)
+        decision = select_search_move(state, result)
+        logger = logging.getLogger("simulation")
+        policy = {name: [{"move": o.move_choice, "visits": o.visits,
+                          "score": round(o.total_score / o.visits, 6) if o.visits else None}
+                         for o in options]
+                  for name, options in (("side_one", result.side_one), ("side_two", result.side_two))}
+        logger.info("Search %s turn=%s user=%s selected=%s iterations=%s budget_ms=%s policy=%s",
+                    battle.battle_tag, battle.turn, battle.user.active.name, decision,
+                    result.total_visits, self.search_time_ms, json.dumps(policy))
+        # DEBUG captures every replayable input; INFO captures suspicious selections.
+        selected = next((o for o in result.side_one if o.move_choice == decision), None)
+        level = logging.INFO if (selected and selected.visits and
+                                 selected.total_score / selected.visits < 0.1) else logging.DEBUG
+        logger.log(level, "Search replay %s user=%s state=%s", battle.battle_tag,
+                   battle.user.active.name, state.to_string())
+        return decision
 
 
 class FoulPlayPlayer(Player):

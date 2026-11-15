@@ -791,6 +791,7 @@ pub struct VolatileStatusDurations {
     pub slowstart: i8,
     pub taunt: i8,
     pub yawn: i8,
+    pub partiallytrapped: i8,
 }
 
 impl Default for VolatileStatusDurations {
@@ -802,6 +803,7 @@ impl Default for VolatileStatusDurations {
             slowstart: 0,
             taunt: 0,
             yawn: 0,
+            partiallytrapped: 0,
         }
     }
 }
@@ -815,6 +817,7 @@ impl VolatileStatusDurations {
             ("slowstart", self.slowstart),
             ("taunt", self.taunt),
             ("yawn", self.yawn),
+            ("partiallytrapped", self.partiallytrapped),
         ];
 
         let mut output = String::new();
@@ -831,8 +834,8 @@ impl VolatileStatusDurations {
 
     pub fn serialize(&self) -> String {
         format!(
-            "{};{};{};{};{};{}",
-            self.confusion, self.encore, self.lockedmove, self.slowstart, self.taunt, self.yawn
+            "{};{};{};{};{};{};{}",
+            self.confusion, self.encore, self.lockedmove, self.slowstart, self.taunt, self.yawn, self.partiallytrapped
         )
     }
     pub fn deserialize(serialized: &str) -> VolatileStatusDurations {
@@ -844,6 +847,7 @@ impl VolatileStatusDurations {
             slowstart: split[3].parse::<i8>().unwrap(),
             taunt: split[4].parse::<i8>().unwrap(),
             yawn: split[5].parse::<i8>().unwrap(),
+            partiallytrapped: split.get(6).map(|s| s.parse::<i8>().unwrap()).unwrap_or(0),
         }
     }
 }
@@ -1631,6 +1635,9 @@ impl State {
             }
             PokemonVolatileStatus::YAWN => {
                 side.volatile_status_durations.yawn += amount;
+            }
+            PokemonVolatileStatus::PARTIALLYTRAPPED => {
+                side.volatile_status_durations.partiallytrapped += amount;
             }
             _ => panic!(
                 "Invalid volatile status for increment_volatile_status_duration: {:?}",

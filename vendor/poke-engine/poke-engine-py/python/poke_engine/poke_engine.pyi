@@ -26,6 +26,7 @@ class VolatileStatusDurations:
     slowstart: int
     taunt: int
     yawn: int
+    partiallytrapped: int
 
     def __init__(
         self,
@@ -35,6 +36,7 @@ class VolatileStatusDurations:
         slowstart: int = 0,
         taunt: int = 0,
         yawn: int = 0,
+        partiallytrapped: int = 0,
     ) -> None: ...
 
 class SideConditions:

@@ -15,13 +15,23 @@ both in Showdown and throughout engine searches. A local patch includes Super Lu
 critical-hit stages: 12.5% for ordinary moves and 50% for high-crit moves such
 as Sky Attack and Night Slash. Leek adds two stages for Sirfetch’d and Farfetch’d,
 giving high-crit moves a 100% critical-hit chance. Battle Armor and Shell Armor still block crits.
+Local engine patches also model Gluttony/Custap turn order, finite Whirlpool/Sand
+Tomb durations, and Rest failing at full HP. The accuracy profile includes Meteor
+Beam at 100% in both Showdown and search. Attack-stage evaluation uses the known
+moves' stat dependencies. The adapter excludes irrelevant pure Attack drops and
+prefers useful root choices among similarly scored moves when an alternative has
+no modeled effect against every legal response, retaining forced choices and contextual healing/type changes. Per-move visits and scores
+are logged for both sides; flagged choices and near-certain losses include
+replayable engine states (all states are available at DEBUG logging level).
 Re-run the install command after changing the vendored engine; an already
 installed PyPI wheel does not contain this patch.
 If you previously installed the same engine version with other build features,
-rebuild it explicitly (pip may otherwise reuse that installation):
+rebuild it explicitly (pip may otherwise reuse that installation). Restart both
+the simulation and Showdown server after engine or format changes; an existing
+server keeps its previously loaded format:
 
 ```bash
-python -m pip install --force-reinstall --no-cache-dir poke-engine==0.0.48 --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
+python -m pip install --force-reinstall --no-cache-dir ./vendor/poke-engine/poke-engine-py --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
 ```
 
 On a fresh checkout, first initialize and install Showdown (Node.js 22.18+):

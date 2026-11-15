@@ -25,6 +25,8 @@ define_enum_with_from_str! {
     Items {
         NONE,
         UNKNOWNITEM,
+        GRIPCLAW,
+        BINDINGBAND,
         ABSORBBULB,
         ADRENALINEORB,
         ADAMANTORB,

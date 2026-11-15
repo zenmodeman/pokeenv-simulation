@@ -1,7 +1,7 @@
 use super::abilities::Abilities;
 use super::items::Items;
 use super::state::PokemonVolatileStatus;
-use crate::choices::MoveCategory;
+use crate::choices::{Choices, MoveCategory};
 use crate::state::{Pokemon, PokemonStatus, Side, State};
 
 const POKEMON_ALIVE: f32 = 30.0;
@@ -156,6 +156,29 @@ fn evaluate_pokemon(pokemon: &Pokemon) -> f32 {
     score
 }
 
+fn attack_stage_value(side: &Side, opponent: &Side) -> f32 {
+    let pokemon = side.get_active_immutable();
+    let uses_attack = pokemon.moves.into_iter().any(|m| {
+        matches!(m.id, Choices::TERABLAST | Choices::SHELLSIDEARM | Choices::TRANSFORM
+            | Choices::MIMIC | Choices::COPYCAT | Choices::METRONOME | Choices::ASSIST
+            | Choices::MEFIRST | Choices::MIRRORMOVE | Choices::SKETCH | Choices::NATUREPOWER)
+        || (m.choice.category == MoveCategory::Physical && !matches!(m.id,
+            Choices::FOULPLAY | Choices::BODYPRESS | Choices::SEISMICTOSS | Choices::NIGHTSHADE
+            | Choices::SUPERFANG | Choices::ENDEAVOR | Choices::FINALGAMBIT | Choices::COUNTER
+            | Choices::METALBURST | Choices::BIDE))
+    });
+    if uses_attack {
+        POKEMON_ATTACK_BOOST
+    } else if side.volatile_statuses.contains(&PokemonVolatileStatus::CONFUSION)
+        || opponent.get_active_immutable().moves.into_iter().any(|m| m.id == Choices::FOULPLAY)
+    {
+        // Raising an otherwise unused Attack only increases incoming damage.
+        -POKEMON_ATTACK_BOOST
+    } else {
+        0.0
+    }
+}
+
 pub fn evaluate(state: &State) -> f32 {
     let mut score = 0.0;
 
@@ -188,7 +211,7 @@ pub fn evaluate(state: &State) -> f32 {
                     score += CONFUSION;
                 }
 
-                score += get_boost_multiplier(state.side_one.attack_boost) * POKEMON_ATTACK_BOOST;
+                score += get_boost_multiplier(state.side_one.attack_boost) * attack_stage_value(&state.side_one, &state.side_two);
                 score += get_boost_multiplier(state.side_one.defense_boost) * POKEMON_DEFENSE_BOOST;
                 score += get_boost_multiplier(state.side_one.special_attack_boost)
                     * POKEMON_SPECIAL_ATTACK_BOOST;
@@ -234,7 +257,7 @@ pub fn evaluate(state: &State) -> f32 {
                     score -= CONFUSION;
                 }
 
-                score -= get_boost_multiplier(state.side_two.attack_boost) * POKEMON_ATTACK_BOOST;
+                score -= get_boost_multiplier(state.side_two.attack_boost) * attack_stage_value(&state.side_two, &state.side_one);
                 score -= get_boost_multiplier(state.side_two.defense_boost) * POKEMON_DEFENSE_BOOST;
                 score -= get_boost_multiplier(state.side_two.special_attack_boost)
                     * POKEMON_SPECIAL_ATTACK_BOOST;
@@ -266,4 +289,37 @@ pub fn evaluate(state: &State) -> f32 {
     score -= state.side_two.side_conditions.healing_wish as f32 * HEALING_WISH;
 
     score
+}
+
+#[cfg(test)]
+mod audit_tests {
+    use super::*;
+    use crate::state::{Move, PokemonMoveIndex};
+
+    #[test]
+    fn attack_stages_follow_the_stat_used_by_known_moves() {
+        let mut state = State::default();
+        for id in ["shadowball", "foulplay", "bodypress", "seismictoss"] {
+            state.side_one.get_active().moves[&PokemonMoveIndex::M0] =
+                Move::deserialize(&format!("{};false;16", id));
+            let baseline = evaluate(&state);
+            state.side_one.attack_boost = -2;
+            assert_eq!(evaluate(&state), baseline, "{} does not use own Attack", id);
+            state.side_one.attack_boost = 0;
+        }
+        state.side_one.get_active().moves[&PokemonMoveIndex::M0] = Move::deserialize("tackle;false;16");
+        let baseline = evaluate(&state);
+        state.side_one.attack_boost = -2;
+        assert!(evaluate(&state) < baseline);
+    }
+
+    #[test]
+    fn lower_attack_helps_against_foul_play_when_it_is_otherwise_unused() {
+        let mut state = State::default();
+        state.side_one.get_active().moves[&PokemonMoveIndex::M0] = Move::deserialize("shadowball;false;16");
+        state.side_two.get_active().moves[&PokemonMoveIndex::M0] = Move::deserialize("foulplay;false;16");
+        let baseline = evaluate(&state);
+        state.side_one.attack_boost = -2;
+        assert!(evaluate(&state) > baseline);
+    }
 }

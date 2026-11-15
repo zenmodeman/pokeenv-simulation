@@ -720,6 +720,15 @@ fn get_instructions_from_volatile_statuses(
         side.volatile_statuses
             .insert(volatile_status.volatile_status);
         incoming_instructions.instruction_list.push(ins);
+        if volatile_status.volatile_status == PokemonVolatileStatus::PARTIALLYTRAPPED {
+            let elapsed = side.volatile_status_durations.partiallytrapped;
+            if elapsed != 0 {
+                side.volatile_status_durations.partiallytrapped = 0;
+                incoming_instructions.instruction_list.push(Instruction::ChangeVolatileStatusDuration(
+                    ChangeVolatileStatusDurationInstruction { side_ref: target_side,
+                        volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED, amount: -elapsed }));
+            }
+        }
     }
 }
 
@@ -2708,29 +2717,30 @@ fn moves_first(
 
     let side_one_active = state.side_one.get_active_immutable();
     let side_two_active = state.side_two.get_active_immutable();
+    // Custap is consumed when establishing fractional priority, even when the
+    // opponent selected a different priority bracket. Both sides can activate.
+    let custap = |pokemon: &Pokemon| {
+        pokemon.item == Items::CUSTAPBERRY && pokemon.hp > 0
+            && (pokemon.hp as i32 * if pokemon.ability == Abilities::GLUTTONY { 2 } else { 4 }
+                <= pokemon.maxhp as i32)
+    };
+    let s1_custap = custap(side_one_active)
+        && !(side_one_choice.category == MoveCategory::Status
+            && side_one_active.ability == Abilities::MYCELIUMMIGHT);
+    let s2_custap = custap(side_two_active)
+        && !(side_two_choice.category == MoveCategory::Status
+            && side_two_active.ability == Abilities::MYCELIUMMIGHT);
+    for (activated, side_ref) in [(s1_custap, SideReference::SideOne),
+                                  (s2_custap, SideReference::SideTwo)] {
+        if activated {
+            incoming_instructions.instruction_list.push(Instruction::ChangeItem(
+                ChangeItemInstruction { side_ref, new_item: Items::NONE,
+                                        current_item: Items::CUSTAPBERRY }));
+        }
+    }
     if side_one_choice.priority == side_two_choice.priority {
-        if side_one_active.item == Items::CUSTAPBERRY
-            && side_one_active.hp < side_one_active.maxhp / 4
-        {
-            incoming_instructions
-                .instruction_list
-                .push(Instruction::ChangeItem(ChangeItemInstruction {
-                    side_ref: SideReference::SideOne,
-                    new_item: Items::NONE,
-                    current_item: Items::CUSTAPBERRY,
-                }));
-            return SideMovesFirst::SideOne;
-        } else if side_two_active.item == Items::CUSTAPBERRY
-            && side_two_active.hp < side_two_active.maxhp / 4
-        {
-            incoming_instructions
-                .instruction_list
-                .push(Instruction::ChangeItem(ChangeItemInstruction {
-                    side_ref: SideReference::SideTwo,
-                    new_item: Items::NONE,
-                    current_item: Items::CUSTAPBERRY,
-                }));
-            return SideMovesFirst::SideTwo;
+        if s1_custap != s2_custap {
+            return if s1_custap { SideMovesFirst::SideOne } else { SideMovesFirst::SideTwo };
         }
 
         if side_one_effective_speed == side_two_effective_speed {
@@ -2902,6 +2912,60 @@ fn on_terrain_end(
         }
         _ => {}
     }
+}
+
+// Elapsed residual ticks are observable; the hidden initial duration is not.
+// After four ticks, expiry and one final tick each have probability 1/2.
+fn finish_turn_branches(
+    state: &mut State,
+    branches: &mut Vec<StateInstructions>,
+    first: &SideReference,
+    replacing: bool,
+) {
+    if replacing { return; }
+    let mut expanded = Vec::new();
+    for initial in branches.drain(..) {
+        state.apply_instructions(&initial.instruction_list);
+        let skip = state.side_one.force_switch || state.side_two.force_switch;
+        state.reverse_instructions(&initial.instruction_list);
+        if skip { expanded.push(initial); continue; }
+        let mut pending = vec![initial];
+        for side_ref in [SideReference::SideOne, SideReference::SideTwo] {
+            let mut next = Vec::new();
+            for mut branch in pending {
+                state.apply_instructions(&branch.instruction_list);
+                let side = state.get_side_immutable(&side_ref);
+                let source = state.get_side_immutable(&side_ref.get_other_side()).get_active_immutable();
+                let elapsed = side.volatile_status_durations.partiallytrapped;
+                let grip_claw = source.item == Items::GRIPCLAW;
+                let expires = side.volatile_statuses.contains(&PokemonVolatileStatus::PARTIALLYTRAPPED)
+                    && (source.hp == 0 || elapsed >= if grip_claw { 7 } else { 4 });
+                let random_expiry = expires && source.hp > 0 && !grip_claw && elapsed == 4;
+                state.reverse_instructions(&branch.instruction_list);
+                if expires {
+                    if random_expiry {
+                        branch.update_percentage(0.5);
+                        next.push(branch.clone());
+                    }
+                    branch.instruction_list.push(Instruction::RemoveVolatileStatus(
+                        RemoveVolatileStatusInstruction { side_ref,
+                            volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED }));
+                    branch.instruction_list.push(Instruction::ChangeVolatileStatusDuration(
+                        ChangeVolatileStatusDurationInstruction { side_ref,
+                            volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED, amount: -elapsed }));
+                }
+                next.push(branch);
+            }
+            pending = next;
+        }
+        for mut branch in pending {
+            state.apply_instructions(&branch.instruction_list);
+            add_end_of_turn_instructions(state, &mut branch, first);
+            state.reverse_instructions(&branch.instruction_list);
+            expanded.push(branch);
+        }
+    }
+    *branches = expanded;
 }
 
 fn add_end_of_turn_instructions(
@@ -3597,22 +3661,37 @@ fn add_end_of_turn_instructions(
                 ));
         }
 
-        if side
-            .volatile_statuses
-            .contains(&PokemonVolatileStatus::PARTIALLYTRAPPED)
-        {
-            let active_pkmn = side.get_active();
-            let damage_amount = cmp::min(
-                (active_pkmn.maxhp as f32 * PARTIALLY_TRAPPED_DAMAGE_PCT) as i16,
-                active_pkmn.hp,
-            );
-            incoming_instructions
-                .instruction_list
-                .push(Instruction::Damage(DamageInstruction {
-                    side_ref: *side_ref,
-                    damage_amount,
-                }));
-            active_pkmn.hp -= damage_amount;
+        // Binding ends when its source faints. It ticks even through Protect,
+        // but Magic Guard blocks damage without preventing the timer advancing.
+        let source = state.get_side_immutable(&side_ref.get_other_side()).get_active_immutable();
+        let source_alive = source.hp > 0;
+        let binding_band = source.item == Items::BINDINGBAND;
+        let side = state.get_side(side_ref);
+        if side.volatile_statuses.contains(&PokemonVolatileStatus::PARTIALLYTRAPPED) {
+            if !source_alive {
+                side.volatile_statuses.remove(&PokemonVolatileStatus::PARTIALLYTRAPPED);
+                incoming_instructions.instruction_list.push(Instruction::RemoveVolatileStatus(
+                    RemoveVolatileStatusInstruction { side_ref: *side_ref,
+                        volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED }));
+                let elapsed = side.volatile_status_durations.partiallytrapped;
+                side.volatile_status_durations.partiallytrapped = 0;
+                incoming_instructions.instruction_list.push(Instruction::ChangeVolatileStatusDuration(
+                    ChangeVolatileStatusDurationInstruction { side_ref: *side_ref,
+                        volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED, amount: -elapsed }));
+            } else {
+                side.volatile_status_durations.partiallytrapped += 1;
+                incoming_instructions.instruction_list.push(Instruction::ChangeVolatileStatusDuration(
+                    ChangeVolatileStatusDurationInstruction { side_ref: *side_ref,
+                        volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED, amount: 1 }));
+                let active_pkmn = side.get_active();
+                if active_pkmn.ability != Abilities::MAGICGUARD {
+                    let fraction = if binding_band { 1.0 / 6.0 } else { PARTIALLY_TRAPPED_DAMAGE_PCT };
+                    let damage_amount = cmp::min(cmp::max((active_pkmn.maxhp as f32 * fraction) as i16, 1), active_pkmn.hp);
+                    incoming_instructions.instruction_list.push(Instruction::Damage(DamageInstruction {
+                        side_ref: *side_ref, damage_amount }));
+                    active_pkmn.hp -= damage_amount;
+                }
+            }
         }
         if side
             .volatile_statuses
@@ -4347,17 +4426,8 @@ pub fn generate_instructions_from_move_pair(
                 branch_on_damage,
             );
 
-            for state_instruction in state_instructions_vec.iter_mut() {
-                state.apply_instructions(&state_instruction.instruction_list);
-                if !(s1_replacing_fainted_pkmn
-                    || s2_replacing_fainted_pkmn
-                    || state.side_one.force_switch
-                    || state.side_two.force_switch)
-                {
-                    add_end_of_turn_instructions(state, state_instruction, &SideReference::SideOne);
-                }
-                state.reverse_instructions(&state_instruction.instruction_list);
-            }
+            finish_turn_branches(state, &mut state_instructions_vec, &SideReference::SideOne,
+                s1_replacing_fainted_pkmn || s2_replacing_fainted_pkmn);
         }
         SideMovesFirst::SideTwo => {
             handle_both_moves(
@@ -4369,17 +4439,8 @@ pub fn generate_instructions_from_move_pair(
                 &mut state_instructions_vec,
                 branch_on_damage,
             );
-            for state_instruction in state_instructions_vec.iter_mut() {
-                state.apply_instructions(&state_instruction.instruction_list);
-                if !(s1_replacing_fainted_pkmn
-                    || s2_replacing_fainted_pkmn
-                    || state.side_one.force_switch
-                    || state.side_two.force_switch)
-                {
-                    add_end_of_turn_instructions(state, state_instruction, &SideReference::SideTwo);
-                }
-                state.reverse_instructions(&state_instruction.instruction_list);
-            }
+            finish_turn_branches(state, &mut state_instructions_vec, &SideReference::SideTwo,
+                s1_replacing_fainted_pkmn || s2_replacing_fainted_pkmn);
         }
         SideMovesFirst::SpeedTie => {
             let mut side_one_moves_first_instruction = incoming_instructions.clone();
@@ -4396,17 +4457,8 @@ pub fn generate_instructions_from_move_pair(
                 &mut state_instructions_vec,
                 branch_on_damage,
             );
-            for state_instruction in state_instructions_vec.iter_mut() {
-                state.apply_instructions(&state_instruction.instruction_list);
-                if !(s1_replacing_fainted_pkmn
-                    || s2_replacing_fainted_pkmn
-                    || state.side_one.force_switch
-                    || state.side_two.force_switch)
-                {
-                    add_end_of_turn_instructions(state, state_instruction, &SideReference::SideOne);
-                }
-                state.reverse_instructions(&state_instruction.instruction_list);
-            }
+            finish_turn_branches(state, &mut state_instructions_vec, &SideReference::SideOne,
+                s1_replacing_fainted_pkmn || s2_replacing_fainted_pkmn);
 
             // side_two moves first
             let mut side_two_moves_first_si = Vec::with_capacity(4);
@@ -4419,17 +4471,8 @@ pub fn generate_instructions_from_move_pair(
                 &mut side_two_moves_first_si,
                 branch_on_damage,
             );
-            for state_instruction in side_two_moves_first_si.iter_mut() {
-                state.apply_instructions(&state_instruction.instruction_list);
-                if !(s1_replacing_fainted_pkmn
-                    || s2_replacing_fainted_pkmn
-                    || state.side_one.force_switch
-                    || state.side_two.force_switch)
-                {
-                    add_end_of_turn_instructions(state, state_instruction, &SideReference::SideTwo);
-                }
-                state.reverse_instructions(&state_instruction.instruction_list);
-            }
+            finish_turn_branches(state, &mut side_two_moves_first_si, &SideReference::SideTwo,
+                s1_replacing_fainted_pkmn || s2_replacing_fainted_pkmn);
 
             // combine both vectors into the final vector
             state_instructions_vec.extend(side_two_moves_first_si);
@@ -10736,7 +10779,12 @@ mod tests {
         #[cfg(any(feature = "gen4", feature = "gen5"))]
         let expected_instructions = StateInstructions {
             percentage: 100.0,
-            instruction_list: vec![Instruction::Damage(DamageInstruction {
+            instruction_list: vec![Instruction::ChangeVolatileStatusDuration(
+                ChangeVolatileStatusDurationInstruction {
+                    side_ref: SideReference::SideOne,
+                    volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED,
+                    amount: 1,
+                }), Instruction::Damage(DamageInstruction {
                 side_ref: SideReference::SideOne,
                 damage_amount: 6,
             })],
@@ -10751,7 +10799,12 @@ mod tests {
         ))]
         let expected_instructions = StateInstructions {
             percentage: 100.0,
-            instruction_list: vec![Instruction::Damage(DamageInstruction {
+            instruction_list: vec![Instruction::ChangeVolatileStatusDuration(
+                ChangeVolatileStatusDurationInstruction {
+                    side_ref: SideReference::SideOne,
+                    volatile_status: PokemonVolatileStatus::PARTIALLYTRAPPED,
+                    amount: 1,
+                }), Instruction::Damage(DamageInstruction {
                 side_ref: SideReference::SideOne,
                 damage_amount: 12,
             })],

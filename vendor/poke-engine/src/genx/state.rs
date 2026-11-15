@@ -1400,6 +1400,16 @@ impl State {
                     side.volatile_status_durations.lockedmove = 0;
                     false
                 }
+                PokemonVolatileStatus::PARTIALLYTRAPPED => {
+                    instructions.push(Instruction::ChangeVolatileStatusDuration(
+                        ChangeVolatileStatusDurationInstruction {
+                            side_ref: *side_ref,
+                            volatile_status: *pkmn_volatile_status,
+                            amount: -side.volatile_status_durations.partiallytrapped,
+                        }));
+                    side.volatile_status_durations.partiallytrapped = 0;
+                    false
+                }
                 PokemonVolatileStatus::YAWN => {
                     instructions.push(Instruction::ChangeVolatileStatusDuration(
                         ChangeVolatileStatusDurationInstruction {
