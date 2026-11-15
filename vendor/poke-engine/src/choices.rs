@@ -9693,6 +9693,10 @@ pub static MOVES: LazyLock<HashMap<Choices, Choice>> = LazyLock::new(|| {
         Choices::LOCKON,
         Choice {
             move_id: Choices::LOCKON,
+            volatile_status: Some(VolatileStatus {
+                target: MoveTarget::User,
+                volatile_status: PokemonVolatileStatus::LOCKONNEXT,
+            }),
             move_type: PokemonType::NORMAL,
             flags: Flags {
                 protect: true,
@@ -10645,6 +10649,10 @@ pub static MOVES: LazyLock<HashMap<Choices, Choice>> = LazyLock::new(|| {
         Choices::MINDREADER,
         Choice {
             move_id: Choices::MINDREADER,
+            volatile_status: Some(VolatileStatus {
+                target: MoveTarget::User,
+                volatile_status: PokemonVolatileStatus::LOCKONNEXT,
+            }),
             move_type: PokemonType::NORMAL,
             flags: Flags {
                 protect: true,

@@ -173,6 +173,8 @@ define_enum_with_from_str! {
         CURSE,
         DEFENSECURL,
         DESTINYBOND,
+        LOCKON,
+        LOCKONNEXT,
         DIG,
         DISABLE,
         DIVE,

@@ -1249,11 +1249,33 @@ fn check_move_hit_or_miss(
 
     Otherwise, update the incoming instructions' percent_hit to reflect the chance of the move hitting
     */
-    let attacking_side = state.get_side(attacking_side_ref);
+    let attacking_side = state.get_side_immutable(attacking_side_ref);
     let attacking_pokemon = attacking_side.get_active_immutable();
 
-    let mut percent_hit =
-        ((choice.accuracy / 100.0) * boosted_accuracy(attacking_side.accuracy_boost)).min(1.0);
+    let (_, defending_side) = state.get_both_sides_immutable(attacking_side_ref);
+    let defender = defending_side.get_active_immutable();
+    let locked_on = attacking_side.volatile_statuses.contains(&PokemonVolatileStatus::LOCKON)
+        || attacking_side.volatile_statuses.contains(&PokemonVolatileStatus::LOCKONNEXT);
+    let no_guard = attacking_pokemon.ability == Abilities::NOGUARD
+        || defender.ability == Abilities::NOGUARD;
+    let mut percent_hit = if choice.move_id == Choices::SHEERCOLD {
+        if locked_on || no_guard {
+            1.0
+        } else if choice.accuracy == 0.0 {
+            0.0
+        } else {
+            let base = if attacking_pokemon.has_type(&PokemonType::ICE) {
+                30.0
+            } else {
+                20.0
+            };
+            ((base + attacking_pokemon.level as f32 - defender.level as f32) / 100.0).min(1.0)
+        }
+    } else if locked_on || matches!(choice.move_id, Choices::MINDREADER | Choices::LOCKON) {
+        1.0
+    } else {
+        ((choice.accuracy / 100.0) * boosted_accuracy(attacking_side.accuracy_boost)).min(1.0)
+    };
     if Some((0, 0)) == damage {
         percent_hit = 0.0;
     }
@@ -1613,8 +1635,25 @@ fn generate_instructions_from_damage(
 }
 
 fn move_has_no_effect(state: &State, choice: &Choice, attacking_side_ref: &SideReference) -> bool {
-    let (_attacking_side, defending_side) = state.get_both_sides_immutable(attacking_side_ref);
+    let (attacking_side, defending_side) = state.get_both_sides_immutable(attacking_side_ref);
     let defender = defending_side.get_active_immutable();
+
+    if choice.move_id == Choices::SHEERCOLD {
+        let attacker = attacking_side.get_active_immutable();
+        if defender.level > attacker.level
+            || defender.has_type(&PokemonType::ICE)
+            || defender.ability == Abilities::STURDY
+        {
+            return true;
+        }
+    }
+    if matches!(choice.move_id, Choices::MINDREADER | Choices::LOCKON)
+        && (attacking_side.volatile_statuses.contains(&PokemonVolatileStatus::LOCKON)
+            || attacking_side.volatile_statuses.contains(&PokemonVolatileStatus::LOCKONNEXT)
+            || defending_side.volatile_statuses.contains(&PokemonVolatileStatus::SUBSTITUTE))
+    {
+        return true;
+    }
 
     #[cfg(not(any(feature = "gen4", feature = "gen5")))]
     if choice.flags.powder
@@ -2371,7 +2410,13 @@ pub fn generate_instructions_from_move(
     if choice.move_id != Choices::RUINATION {
         choice_special_effect(state, choice, &attacking_side, &mut incoming_instructions);
     }
-    let damage = if choice.move_id == Choices::RUINATION {
+    let damage = if choice.move_id == Choices::SHEERCOLD && choice.category != MoveCategory::Status {
+        let hp = state
+            .get_side_immutable(&attacking_side.get_other_side())
+            .get_active_immutable()
+            .hp;
+        Some((hp, hp))
+    } else if choice.move_id == Choices::RUINATION {
         None // Fixed damage is handled below, after the accuracy check.
     } else {
         calculate_damage(state, &attacking_side, &choice, DamageRolls::Max)
@@ -2440,7 +2485,9 @@ pub fn generate_instructions_from_move(
         does_damage = true;
         let avg_damage_dealt = (max_damage_dealt as f32 * 0.925) as i16;
         let min_damage_dealt = (max_damage_dealt as f32 * 0.85) as i16;
-        if branch_on_damage
+        if choice.move_id == Choices::SHEERCOLD {
+            regular_damage = max_damage_dealt;
+        } else if branch_on_damage
             && max_damage_dealt >= defender_active.hp
             && min_damage_dealt < defender_active.hp
         {
@@ -3490,6 +3537,37 @@ fn add_end_of_turn_instructions(
                         volatile_status: PokemonVolatileStatus::PERISH3,
                     },
                 ));
+        }
+
+        // Mind Reader lasts through the following turn, including a turn lost to flinch.
+        if side
+            .volatile_statuses
+            .remove_with_check(&PokemonVolatileStatus::LOCKON)
+        {
+            incoming_instructions.instruction_list.push(Instruction::RemoveVolatileStatus(
+                RemoveVolatileStatusInstruction {
+                    side_ref: *side_ref,
+                    volatile_status: PokemonVolatileStatus::LOCKON,
+                },
+            ));
+        }
+        if side
+            .volatile_statuses
+            .remove_with_check(&PokemonVolatileStatus::LOCKONNEXT)
+        {
+            side.volatile_statuses.insert(PokemonVolatileStatus::LOCKON);
+            incoming_instructions.instruction_list.push(Instruction::RemoveVolatileStatus(
+                RemoveVolatileStatusInstruction {
+                    side_ref: *side_ref,
+                    volatile_status: PokemonVolatileStatus::LOCKONNEXT,
+                },
+            ));
+            incoming_instructions.instruction_list.push(Instruction::ApplyVolatileStatus(
+                ApplyVolatileStatusInstruction {
+                    side_ref: *side_ref,
+                    volatile_status: PokemonVolatileStatus::LOCKON,
+                },
+            ));
         }
 
         if side

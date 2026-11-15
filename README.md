@@ -238,6 +238,13 @@ After updating the vendored engine, rebuild it with the local pip command above.
 Ability activations (`-ability`) and stat drops (`-unboost`) are recorded in
 `simulation.log`, including Mirror Armor and each reflected drop.
 
+Mind Reader (and Lock-On) now grants guaranteed accuracy through the next turn,
+so search can evaluate Articuno's Mind Reader + Sheer Cold combination alongside
+its other options. Sheer Cold deals OHKO damage on a hit, ignores accuracy/evasion
+stages, and fails against Ice types, higher-level targets, and Sturdy. Protect,
+Substitute, Focus Sash, and the risk of fainting before the follow-up remain part
+of the search. Rebuild the local engine after pulling these changes.
+
 Search remains approximate and limited by its time budget and poke-engine's mechanics coverage. This adapter supports
 Gen 9 singles with one Pokémon per side; it does not support team switching,
 Dynamax, or Z-Moves. Unsupported engine choices or adapter failures stop the run
