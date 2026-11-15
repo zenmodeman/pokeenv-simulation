@@ -206,6 +206,11 @@ class KnownSetMatch:
                 side.active.original_ability = side.active.ability
             self.states[tag] = state
 
+        # Lock-On has no explicit end message. In 1v1 its activation remains
+        # valid for exactly the next decision, regardless of whether we can act.
+        for side in (state.user, state.opponent):
+            side.active.volatile_statuses = [v for v in side.active.volatile_statuses
+                                           if v != "lockon"]
         state.request_json = requests[0]
         for message in turn.messages:
             action = message[1] if len(message) > 1 else ""
@@ -215,6 +220,10 @@ class KnownSetMatch:
                     # switch-in ability/weather messages normally, including Intimidate.
                     continue
                 raise ValueError("Unexpected switch in a one-Pokémon battle")
+            if (action == "-activate" and len(message) > 3
+                    and message[3].lower() in {"move: mind reader", "move: lock-on"}):
+                side = state.user if message[2].startswith(state.user.name) else state.opponent
+                side.active.volatile_statuses.append("lockon")
             handler = MODIFIERS.get(action)
             if handler:
                 getattr(protocol, handler)(state, message)
