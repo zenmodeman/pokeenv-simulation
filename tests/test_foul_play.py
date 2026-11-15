@@ -245,6 +245,30 @@ class StateBridgeTests(unittest.TestCase):
 
 
 class SynchronizationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_stop_cancels_pending_messages_before_closing_websocket(self):
+        player = object.__new__(FoulPlayPlayer)
+        player.ps_client = SimpleNamespace(loop=asyncio.get_running_loop(),
+                                           stop_listening=AsyncMock())
+        started = asyncio.Event()
+
+        async def process(messages):
+            started.set()
+            await asyncio.Event().wait()
+
+        with patch.object(player, "_process_battle_message", side_effect=process) as handler:
+            task = asyncio.create_task(player._handle_battle_message([]))
+            await started.wait()
+
+            async def close():
+                self.assertTrue(task.done())
+                self.assertFalse(player._message_tasks)
+
+            player.ps_client.stop_listening.side_effect = close
+            await player.stop()
+            player.ps_client.stop_listening.assert_awaited_once()
+            await player._handle_battle_message([])
+            handler.assert_called_once()
+
     async def test_player_sends_mega_order_and_rejects_tera(self):
         player = SimpleNamespace(
             match=SimpleNamespace(choose=AsyncMock(return_value="dragonclaw-mega")),

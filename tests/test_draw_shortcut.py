@@ -17,7 +17,7 @@ class DrawShortcutTests(unittest.TestCase):
         def make_player(**kwargs):
             player = SimpleNamespace(
                 n_finished_battles=0, n_won_battles=0, search_error=None,
-                ps_client=SimpleNamespace(stop_listening=AsyncMock()),
+                stop=AsyncMock(),
             )
 
             async def battle_against(opponent, n_battles):

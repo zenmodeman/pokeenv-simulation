@@ -12,6 +12,7 @@ import sys
 from types import SimpleNamespace
 
 from poke_env.player import Player
+from poke_env.concurrency import handle_threaded_coroutines
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor" / "foul-play"))
 try:
@@ -480,6 +481,33 @@ class FoulPlayPlayer(Player):
         super().__init__(**kwargs)
 
     async def _handle_battle_message(self, split_messages):
+        if getattr(self, "_closing", False):
+            return
+        if not hasattr(self, "_message_tasks"):
+            self._message_tasks = set()
+        task = asyncio.current_task()
+        self._message_tasks.add(task)
+        try:
+            await self._process_battle_message(split_messages)
+        except asyncio.CancelledError:
+            if not getattr(self, "_closing", False):
+                raise
+        finally:
+            self._message_tasks.discard(task)
+
+    async def stop(self):
+        """Cancel in-flight decisions on the client loop before closing its socket."""
+        async def shutdown():
+            self._closing = True
+            tasks = list(getattr(self, "_message_tasks", ()))
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            await self.ps_client.stop_listening()
+
+        await handle_threaded_coroutines(shutdown(), self.ps_client.loop)
+
+    async def _process_battle_message(self, split_messages):
         tag = split_messages[0][0].lstrip(">")
         pending = self.pending_messages.setdefault(tag, [])
         for message in split_messages[1:]:

@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "saved_at": "2026-11-15T04:37:40.570236+00:00",
+  "settings": {
+    "sets": [
+      {
+        "name": "Mismagius - Debuffs",
+        "team": "Mismagius @ Sitrus Berry  \nAbility: Levitate  \nEVs: 44 HP / 212 SpA / 252 Spe  \nTimid Nature  \nIVs: 0 Atk  \n- Fake Tears  \n- Draining Kiss  \n- Charm  \n- Shadow Ball"
+      },
+      {
+        "name": "Glimmora - Power Herb",
+        "team": "Glimmora @ Power Herb  \nAbility: Corrosion  \nEVs: 252 HP / 40 Def / 216 SpA  \nModest Nature  \nIVs: 0 Atk  \n- Meteor Beam  \n- Power Gem  \n- Earth Power  \n- Sludge Bomb"
+      },
+      {
+        "name": "Sirfetch'd - Leek",
+        "team": "Sirfetch\u2019d @ Leek  \nAbility: Scrappy  \nEVs: 252 HP / 216 Atk / 40 SpD  \nAdamant Nature  \n- Close Combat  \n- Swords Dance  \n- Night Slash  \n- Leaf Blade"
+      },
+      {
+        "name": "Clefable - Mega",
+        "team": "Clefable @ Clefablite  \nAbility: Unaware  \nEVs: 252 HP / 240 Def / 16 SpD  \nCalm Nature  \nIVs: 0 Atk  \n- Cosmic Power  \n- Moonlight  \n- Moonblast  \n- Stored Power"
+      },
+      {
+        "name": "Articuno - Sheer Reader",
+        "team": "Articuno @ Sitrus Berry  \nAbility: Pressure  \nEVs: 252 HP / 160 Def / 96 SpD  \nCalm Nature  \nIVs: 0 Atk  \n- Mind Reader  \n- Sheer Cold  \n- Ancient Power  \n- Roost"
+      },
+      {
+        "name": "Glastrier - Chesto",
+        "team": "Glastrier @ Chesto Berry  \nAbility: Chilling Neigh  \nEVs: 252 HP / 176 Atk / 80 SpD  \nAdamant Nature  \n- Avalanche  \n- High Horsepower  \n- Rest  \n- Close Combat"
+      },
+      {
+        "name": "Buzzwole - Bulky Offense",
+        "team": "Buzzwole @ Sitrus Berry  \nAbility: Beast Boost  \nEVs: 232 HP / 24 Atk / 252 SpD  \nAdamant Nature  \n- Lunge  \n- Drain Punch  \n- Bulk Up  \n- Ice Punch"
+      },
+      {
+        "name": "Azelf - Anti-Setup",
+        "team": "Azelf @ Sitrus Berry  \nAbility: Levitate  \nEVs: 4 HP / 252 SpA / 252 Spe  \nTimid Nature  \nIVs: 0 Atk  \n- Psyshock\n- Dazzling Gleam  \n- Flamethrower  \n- Taunt"
+      },
+      {
+        "name": "Umbreon - Foul Poison",
+        "team": "Umbreon @ Leftovers  \nAbility: Inner Focus  \nEVs: 252 HP / 40 Def / 216 SpD  \nCalm Nature  \nIVs: 0 Atk  \n- Toxic  \n- Moonlight  \n- Foul Play  \n- Screech"
+      },
+      {
+        "name": "Garchomp - Aggressive",
+        "team": "Garchomp @ Life Orb  \nAbility: Rough Skin  \nEVs: 4 HP / 252 Atk / 252 Spe  \nJolly Nature  \n- Earthquake  \n- Dragon Claw  \n- Rock Slide  \n- Iron Head"
+      },
+      {
+        "name": "Corviknight - Bulky Offense",
+        "team": "Corviknight @ Leftovers  \nAbility: Mirror Armor  \nEVs: 240 HP / 16 Def / 252 SpD  \nImpish Nature  \n- Screech \n- Roost  \n- Brave Bird  \n- Body Press"
+      },
+      {
+        "name": "Dondozo - Debuff Talk",
+        "team": "Dondozo @ Leftovers  \nAbility: Oblivious \nEVs: 200 HP / 56 Def / 252 SpD  \nBold Nature  \nIVs: 0 Atk  \n- Rest  \n- Sleep Talk  \n- Whirlpool  \n- Noble Roar"
+      },
+      {
+        "name": "Unfezant - Power Herb",
+        "team": "Unfezant @ Power Herb\nAbility: Super Luck\nEVs: 4 HP / 252 Atk / 252 Spe\nAdamant Nature\n- Sky Attack\n- Night Slash\n- Return\n- Brave Bird"
+      },
+      {
+        "name": "Manaphy - Hydration",
+        "team": "Manaphy @ Leftovers  \nAbility: Hydration  \nEVs: 252 HP / 216 SpA / 40 SpD  \nModest Nature  \nIVs: 0 Atk  \n- Rain Dance  \n- Rest  \n- Surf  \n- Ice Beam"
+      },
+      {
+        "name": "Ting Lu - Passive Recovery",
+        "team": "Ting-Lu @ Leftovers  \nAbility: Vessel of Ruin  \nEVs: 180 HP / 136 Def / 192 SpD  \nImpish Nature  \n- Payback  \n- Sand Tomb  \n- Stone Edge  \n- Protect"
+      },
+      {
+        "name": "Skarmory - Mega",
+        "team": "Skarmory @ Skarmorite  \nAbility: Sturdy  \nEVs: 208 HP / 48 Atk / 252 Spe  \nJolly Nature  \n- Iron Head  \n- Brave Bird  \n- Drill Run  \n- Roost"
+      },
+      {
+        "name": "Electivire - Expert Belt",
+        "team": "Electivire @ Expert Belt  \nAbility: Motor Drive  \nEVs: 4 HP / 252 Atk / 252 Spe  \nAdamant Nature  \n- Supercell Slam  \n- Earthquake  \n- Low Kick  \n- Ice Punch"
+      },
+      {
+        "name": "Wo-Chien - SeedTect",
+        "team": "Wo-Chien @ Leftovers  \nAbility: Tablets of Ruin  \nEVs: 252 HP / 200 Def / 56 SpD  \nCalm Nature  \nIVs: 0 Atk  \n- Leech Seed  \n- Giga Drain  \n- Foul Play  \n- Protect"
+      },
+      {
+        "name": "Heatmor - Def Drop",
+        "team": "Heatmor @ Custap Berry  \nAbility: Gluttony  \nEVs: 252 HP / 240 Atk / 16 Def  \nAdamant Nature  \n- Fire Lash  \n- Flare Blitz  \n- Thunder Punch  \n- Sucker Punch"
+      }
+    ],
+    "battles_per_pair": 20,
+    "search_time_ms": 100,
+    "accuracy_changes": true
+  },
+  "rows": [
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Glimmora - Power Herb",
+      "battles": 20,
+      "a_wins": 0,
+      "b_wins": 20,
+      "ties": 0,
+      "a_win_rate": 0.0
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Sirfetch'd - Leek",
+      "battles": 20,
+      "a_wins": 0,
+      "b_wins": 20,
+      "ties": 0,
+      "a_win_rate": 0.0
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Clefable - Mega",
+      "battles": 20,
+      "a_wins": 2,
+      "b_wins": 18,
+      "ties": 0,
+      "a_win_rate": 0.1
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Articuno - Sheer Reader",
+      "battles": 20,
+      "a_wins": 0,
+      "b_wins": 20,
+      "ties": 0,
+      "a_win_rate": 0.0
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Glastrier - Chesto",
+      "battles": 20,
+      "a_wins": 17,
+      "b_wins": 3,
+      "ties": 0,
+      "a_win_rate": 0.85
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Buzzwole - Bulky Offense",
+      "battles": 20,
+      "a_wins": 19,
+      "b_wins": 1,
+      "ties": 0,
+      "a_win_rate": 0.95
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Azelf - Anti-Setup",
+      "battles": 20,
+      "a_wins": 17,
+      "b_wins": 3,
+      "ties": 0,
+      "a_win_rate": 0.85
+    },
+    {
+      "mechanics": "accuracy-changes",
+      "policy": "foul-play-mcts",
+      "search_time_ms": 100,
+      "set_a": "Mismagius - Debuffs",
+      "set_b": "Umbreon - Foul Poison",
+      "battles": 5,
+      "a_wins": 0,
+      "b_wins": 5,
+      "ties": 0,
+      "a_win_rate": 0.0
+    }
+  ]
+}

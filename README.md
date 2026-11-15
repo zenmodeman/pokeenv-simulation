@@ -48,6 +48,33 @@ server when finished. An existing server is reused and left running. Server
 output goes to `showdown.log`. Without the flag, start Showdown yourself first.
 Use only a trusted local server: `--no-security` allows rapid automated challenges.
 
+## Save and resume a simulation
+
+While running in an interactive terminal on Linux or macOS, press **s**, then
+**y** to confirm saving progress. No Enter is needed. Press **n** or Enter to
+cancel. Saving leaves the simulation running; after the saved-file message,
+you can stop with **Ctrl-C** and resume later:
+
+```bash
+python attempt.py --start-server --resume simulation-progress.json
+```
+
+The checkpoint contains all battle results completed at the moment of saving,
+including progress within the current pairing. A battle still in progress is
+replayed on resume. Results completed after the last save are not in that
+checkpoint; press **s**, then **y** again to refresh it before stopping.
+Completed pairings are skipped, and challenger alternation, totals, and the
+three-initial-draws shortcut continue from the saved counts. CSV results and final
+standings include both saved and newly completed results.
+
+Use `--checkpoint PATH` to choose where saves go (default:
+`simulation-progress.json`). When using `--resume PATH`, saves update that file
+unless `--checkpoint` specifies another path. Resume requires the same configured
+sets, their order, battle count, search budget, and accuracy mode; pass the same
+`--config` and `--no-accuracy-changes` options if you used them originally.
+Checkpoints are written atomically and remain available after a run completes.
+Keyboard saving is disabled when stdin is redirected or no terminal is attached.
+
 ## Configure sets
 
 Edit `sets.toml`. Each entry has a unique `name` and a `team` string containing
